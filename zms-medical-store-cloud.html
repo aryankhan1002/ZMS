@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ZMS Medical Store</title>
+<style>
+body{margin:0;font:15px Arial,sans-serif;background:#f2f5f8;color:#18232e}
+header{background:#075e66;color:white;padding:16px}
+header h2{margin:0 0 4px}
+nav{display:flex;gap:6px;overflow:auto;background:white;padding:10px;position:sticky;top:0;z-index:5;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+button{border:0;padding:10px 12px;border-radius:6px;background:#087f8c;color:white;cursor:pointer;font:inherit}
+button:active{opacity:.8}
+button.danger{background:#c0392b}
+button.grey{background:#6b7b8a}
+nav button{white-space:nowrap}
+nav button.on{background:#04393f}
+main{padding:12px;max-width:950px;margin:auto}
+section{display:none}
+section.active{display:block}
+.panel,.card{background:white;padding:13px;margin:10px 0;border-radius:9px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cards .card{margin:0}
+label{display:block;margin-top:4px}
+input,select{padding:10px;width:100%;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccd4dc;border-radius:5px;font:inherit}
+table{width:100%;border-collapse:collapse;min-width:500px}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.table{overflow:auto}
+.warn{color:#c0392b}
+.soon{color:#b9770e}
+#cameraBox{display:none;position:fixed;inset:0;background:#111;color:white;padding:15px;z-index:9}
+video{width:100%;max-height:65vh}
+#msg{position:fixed;bottom:10px;left:10px;right:10px;max-width:420px;background:#075e66;color:white;padding:10px;border-radius:6px;display:none;z-index:10}
+#receipt{display:none}
+#login{display:none;position:fixed;inset:0;background:#f2f5f8;z-index:20;align-items:center;justify-content:center;padding:15px;overflow:auto}
+#login .box{background:white;padding:20px;border-radius:10px;max-width:380px;width:100%;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+#userBar{display:none;margin-top:8px;font-size:13px}
+#userBar button{padding:5px 10px;margin-left:6px}
+#receipt table{min-width:0}
+@media print{
+ body>*:not(#receipt){display:none!important}
+ #receipt{display:block!important;background:white;color:black;padding:10px}
+ body{background:white}
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<header><h2>ZMS Medical Store</h2>Medicine Stock &amp; Billing
+<div id="userBar"><span id="userEmail"></span> · <span id="syncState"></span><button type="button" class="grey" onclick="logout()">Logout</button></div>
+</header>
+<nav>
+<button class="on" data-tab="home" onclick="tab('home')">Dashboard</button>
+<button data-tab="meds" onclick="tab('meds')">Medicines</button>
+<button data-tab="bill" onclick="tab('bill')">Billing</button>
+<button data-tab="cust" onclick="tab('cust')">Customers/Udhaar</button>
+</nav>
+<main>
+<section id="home" class="active">
+<h3>Dashboard</h3>
+<div class="cards">
+<div class="card">Medicines<h2 id="totalMeds">0</h2></div>
+<div class="card">Stock Units<h2 id="totalStock">0</h2></div>
+<div class="card">Today's Sales<h2 id="totalSales">Rs 0</h2></div>
+<div class="card">Total Udhaar<h2 id="totalDue">Rs 0</h2></div>
+</div>
+<div class="panel"><b>Alerts (Low Stock / Expiry)</b><div id="alerts"></div></div>
+</section>
+
+<section id="meds">
+<h3>Medicine Stock</h3>
+<div class="panel">
+<input id="mid" type="hidden">
+<label for="mname">Medicine Name</label><input id="mname" placeholder="Medicine name">
+<label for="mbarcode">Barcode</label><input id="mbarcode" placeholder="Barcode number">
+<button type="button" onclick="scan('medicine')">📷 Scan Barcode</button>
+<label for="mexpiry">Expiry Date</label><input id="mexpiry" type="date">
+<label for="mcost">Purchase Price</label><input id="mcost" type="number" min="0" step="any">
+<label for="mprice">Sale Price</label><input id="mprice" type="number" min="0" step="any">
+<label for="mqty">Stock Quantity</label><input id="mqty" type="number" min="0" step="1">
+<button type="button" onclick="saveMed()">Save Medicine</button>
+<button type="button" class="grey" onclick="clearMed()">Clear</button>
+</div>
+<div class="panel">
+<input id="msearch" placeholder="Search medicine" oninput="render()">
+<div class="table"><table><thead><tr><th>Name</th><th>Stock</th><th>Price</th><th>Expiry</th><th>Action</th></tr></thead><tbody id="medRows"></tbody></table></div>
+</div>
+</section>
+
+<section id="bill">
+<h3>Billing</h3>
+<div class="panel">
+<label for="bsearch">Medicine Name or Barcode</label>
+<input id="bsearch" list="medList" placeholder="Type medicine or barcode" autocomplete="off">
+<datalist id="medList"></datalist>
+<button type="button" onclick="addBill()">Add Medicine</button>
+<button type="button" onclick="scan('bill')">📷 Scan Barcode</button>
+<div class="table"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Price</th><th>Remove</th></tr></thead><tbody id="cartRows"></tbody></table></div>
+<p>Subtotal: <b id="subtotal">Rs 0</b></p>
+<label for="discount">Discount</label><input id="discount" type="number" value="0" min="0" step="any" oninput="renderCart()">
+<h3>Total: <span id="grandtotal">Rs 0</span></h3>
+<label for="bcustomer">Customer Name (udhaar ke liye)</label><input id="bcustomer" placeholder="Walk-in ke liye khali chorein">
+<label for="paid">Amount Paid</label><input id="paid" type="number" min="0" step="any" placeholder="Khali chorein = poori payment">
+<button type="button" onclick="finishSale()">Complete Sale &amp; Print</button>
+</div>
+<div class="panel"><h3>Recent Sales</h3><div id="salesRows"></div></div>
+</section>
+
+<section id="cust">
+<h3>Customers / Udhaar</h3>
+<div class="panel">
+<label for="cname">Customer Name</label><input id="cname">
+<label for="cphone">Phone</label><input id="cphone" type="tel">
+<button type="button" onclick="saveCustomer()">Save Customer</button>
+</div>
+<div class="panel">
+<input id="csearch" placeholder="Search customer" oninput="render()">
+<div class="table"><table><thead><tr><th>Name</th><th>Phone</th><th>Due</th><th>Payment</th></tr></thead><tbody id="custRows"></tbody></table></div>
+</div>
+</section>
+</main>
+
+<div id="cameraBox">
+<h3>Scan Barcode</h3><p id="cameraStatus">Starting camera…</p>
+<video id="video" playsinline muted></video><br>
+<button type="button" onclick="closeCamera()">Close Camera</button>
+</div>
+<div id="msg"></div>
+<div id="receipt"></div>
+<div id="login"><div class="box">
+<h2 style="margin-top:0">ZMS Medical Store</h2>
+<p id="loginInfo">Apne account se login karein.</p>
+<label for="lemail">Email</label><input id="lemail" type="email" autocomplete="username">
+<label for="lpass">Password</label><input id="lpass" type="password" autocomplete="current-password">
+<button type="button" onclick="login()">Login</button>
+<button type="button" class="grey" onclick="signup()">Naya Account</button>
+<p><a href="#" onclick="resetPass();return false">Password bhool gaye?</a></p>
+<p id="loginErr" class="warn"></p>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const r2=n=>Math.round((+n||0)*100)/100;
+const same=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+
+let db={meds:[],customers:[],sales:[]},cart=[],stream=null,scanTarget='bill',camToken=0,msgTimer=null;
+
+/* ---------- Firebase settings (yahan apni details paste karein) ---------- */
+const FIREBASE_CONFIG={
+ apiKey:"PASTE_API_KEY",
+ authDomain:"PASTE_PROJECT_ID.firebaseapp.com",
+ projectId:"PASTE_PROJECT_ID",
+ appId:"PASTE_APP_ID"
+};
+const CLOUD=!/^PASTE/.test(FIREBASE_CONFIG.apiKey); // false = sirf is device par save (login nahi)
+
+/* ---------- Data safai ---------- */
+function normalize(){
+ db.meds=Array.isArray(db.meds)?db.meds:[];
+ db.customers=Array.isArray(db.customers)?db.customers:[];
+ db.sales=Array.isArray(db.sales)?db.sales:[];
+ db.meds.forEach(m=>{m.id=String(m.id||uid());m.name=String(m.name||'');m.barcode=String(m.barcode||'');m.expiry=m.expiry||'';m.cost=+m.cost||0;m.price=+m.price||0;m.qty=+m.qty||0});
+ db.customers.forEach(c=>{c.id=String(c.id||uid());c.name=String(c.name||'');c.phone=String(c.phone||'')});
+ db.sales.forEach(s=>{s.customer=s.customer||'';s.items=Array.isArray(s.items)?s.items:[];s.total=+s.total||0;s.due=+s.due||0;
+  if(s.customer&&!db.customers.some(c=>same(c.name,s.customer)))db.customers.push({id:uid(),name:s.customer,phone:''})});
+}
+function readLegacy(){
+ try{const s=JSON.parse(localStorage.getItem('zmsData'));return s&&typeof s==='object'?s:null}catch(e){return null}
+}
+if(!CLOUD){const s=readLegacy();if(s)db=s}
+normalize();
+
+function save(){
+ if(CLOUD)cloudPush();
+ else try{localStorage.setItem('zmsData',JSON.stringify(db))}catch(e){message('Data save nahi ho saka (storage full ya band hai)')}
+ render();
+}
+function money(n){return 'Rs '+Number(n||0).toFixed(2)}
+function message(t){
+ const el=$('msg');el.textContent=t;el.style.display='block';
+ clearTimeout(msgTimer);msgTimer=setTimeout(()=>el.style.display='none',2800);
+}
+function dstr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function todayStr(){return dstr(new Date())}
+function soonStr(){const d=new Date();d.setDate(d.getDate()+30);return dstr(d)}
+function isExpired(m){return !!m.expiry&&m.expiry<todayStr()}
+
+function tab(id){
+ document.querySelectorAll('main section').forEach(s=>s.classList.toggle('active',s.id===id));
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+ window.scrollTo(0,0);
+ render();
+}
+
+/* ---------- Medicines ---------- */
+function clearMed(){['mid','mname','mbarcode','mexpiry','mcost','mprice','mqty'].forEach(id=>$(id).value='')}
+function saveMed(){
+ const name=$('mname').value.trim(),barcode=$('mbarcode').value.trim();
+ if(!name||$('mprice').value===''||$('mcost').value===''||$('mqty').value==='')return message('Medicine ki tamam details bharein.');
+ const cost=Number($('mcost').value),price=Number($('mprice').value),qty=Math.floor(Number($('mqty').value));
+ if(!isFinite(cost)||!isFinite(price)||!isFinite(qty)||cost<0||price<0||qty<0)return message('Price aur quantity sahi likhein (0 ya zyada).');
+ const id=$('mid').value;
+ if(barcode&&db.meds.some(x=>x.id!==id&&x.barcode&&same(x.barcode,barcode)))return message('Yeh barcode kisi aur medicine ka hai.');
+ const m={id:id||uid(),name,barcode,expiry:$('mexpiry').value,cost,price,qty};
+ const i=id?db.meds.findIndex(x=>x.id===id):-1;
+ if(i>=0)db.meds[i]=m;else db.meds.push(m);
+ save();clearMed();message('Medicine save ho gayi');
+}
+function editMed(id){
+ const m=db.meds.find(x=>x.id===id);if(!m)return;
+ tab('meds');
+ $('mid').value=m.id;$('mname').value=m.name;$('mbarcode').value=m.barcode;
+ $('mexpiry').value=m.expiry;$('mcost').value=m.cost;$('mprice').value=m.price;$('mqty').value=m.qty;
+}
+function deleteMed(id){
+ if(confirm('Medicine delete karein?')){db.meds=db.meds.filter(m=>m.id!==id);save()}
+}
+
+/* ---------- Render ---------- */
+function render(){
+ $('totalMeds').textContent=db.meds.length;
+ $('totalStock').textContent=db.meds.reduce((a,m)=>a+m.qty,0);
+ const today=new Date().toLocaleDateString();
+ $('totalSales').textContent=money(db.sales.filter(s=>s.date===today).reduce((a,s)=>a+s.total,0));
+ $('totalDue').textContent=money(db.sales.reduce((a,s)=>a+s.due,0));
+
+ const t=todayStr(),soon=soonStr(),al=[];
+ db.meds.forEach(m=>{
+  if(m.qty<=5)al.push('<p>'+esc(m.name)+' — Stock: '+m.qty+'</p>');
+  if(m.expiry&&m.expiry<t)al.push('<p class="warn">'+esc(m.name)+' — EXPIRED ('+esc(m.expiry)+')</p>');
+  else if(m.expiry&&m.expiry<=soon)al.push('<p class="soon">'+esc(m.name)+' — Jald expire ('+esc(m.expiry)+')</p>');
+ });
+ $('alerts').innerHTML=al.join('')||'No alerts';
+
+ const q=$('msearch').value.toLowerCase();
+ $('medRows').innerHTML=db.meds.filter(m=>(m.name+' '+m.barcode).toLowerCase().includes(q)).map(m=>
+  `<tr><td>${esc(m.name)}</td><td>${m.qty}</td><td>${money(m.price)}</td><td class="${isExpired(m)?'warn':''}">${esc(m.expiry||'-')}</td><td><button type="button" onclick="editMed('${m.id}')">Edit</button> <button type="button" class="danger" onclick="deleteMed('${m.id}')">Delete</button></td></tr>`
+ ).join('')||'<tr><td colspan="5">Koi medicine nahi</td></tr>';
+
+ $('medList').innerHTML=db.meds.map(m=>'<option value="'+esc(m.name)+'"></option>').join('');
+
+ const cq=$('csearch').value.toLowerCase();
+ $('custRows').innerHTML=db.customers.filter(c=>c.name.toLowerCase().includes(cq)).map(c=>{
+  const due=r2(db.sales.filter(s=>same(s.customer,c.name)).reduce((a,s)=>a+s.due,0));
+  return `<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${money(due)}</td><td><button type="button" onclick="receive('${c.id}')">Receive</button></td></tr>`;
+ }).join('')||'<tr><td colspan="4">Koi customer nahi</td></tr>';
+
+ $('salesRows').innerHTML=db.sales.slice().reverse().slice(0,10).map(s=>
+  `<p>${esc(s.invoice)} — ${esc(s.customer||'Walk-in')} — ${money(s.total)} — Due ${money(s.due)} <button type="button" onclick="printSale('${esc(s.invoice)}')">Print</button></p>`
+ ).join('')||'Abhi koi sale nahi';
+ renderCart();
+}
+
+/* ---------- Billing ---------- */
+function findMed(q){
+ q=q.toLowerCase();
+ const exact=db.meds.find(m=>m.name.toLowerCase()===q||(m.barcode&&m.barcode.toLowerCase()===q));
+ if(exact)return exact;
+ const part=db.meds.filter(m=>m.name.toLowerCase().includes(q));
+ if(part.length===1)return part[0];
+ return part.length>1?'many':null;
+}
+function addBill(){
+ const q=$('bsearch').value.trim();
+ if(!q)return message('Medicine ka naam ya barcode likhein');
+ const m=findMed(q);
+ if(m==='many')return message('Kai medicines milti hain, poora naam likhein');
+ if(!m)return message('Medicine nahi mili');
+ if(isExpired(m))return message('Yeh medicine expire ho chuki hai');
+ if(m.qty<1)return message('Stock khatam hai');
+ const item=cart.find(x=>x.id===m.id);
+ if(item){if(item.qty>=m.qty)return message('Stock kam hai');item.qty++}
+ else cart.push({id:m.id,name:m.name,price:m.price,qty:1});
+ $('bsearch').value='';renderCart();
+}
+function renderCart(){
+ cart=cart.filter(x=>db.meds.some(m=>m.id===x.id));
+ cart.forEach(x=>{const m=db.meds.find(m=>m.id===x.id);x.name=m.name;x.price=m.price});
+ $('cartRows').innerHTML=cart.map((x,i)=>
+  `<tr><td>${esc(x.name)}</td><td><button type="button" onclick="changeQty(${i},-1)">−</button> ${x.qty} <button type="button" onclick="changeQty(${i},1)">+</button></td><td>${money(x.qty*x.price)}</td><td><button type="button" class="danger" onclick="removeItem(${i})">X</button></td></tr>`
+ ).join('')||'<tr><td colspan="4">Bill khali hai</td></tr>';
+ const sub=r2(cart.reduce((a,x)=>a+x.qty*x.price,0));
+ const total=Math.max(0,r2(sub-(+$('discount').value||0)));
+ $('subtotal').textContent=money(sub);$('grandtotal').textContent=money(total);
+}
+function removeItem(i){cart.splice(i,1);renderCart()}
+function changeQty(i,n){
+ const item=cart[i];if(!item)return;
+ const m=db.meds.find(x=>x.id===item.id);if(!m)return;
+ if(item.qty+n<1)return;
+ if(n>0&&item.qty>=m.qty)return message('Stock kam hai');
+ item.qty+=n;renderCart();
+}
+function finishSale(){
+ if(!cart.length)return message('Bill khali hai');
+ const sub=r2(cart.reduce((a,x)=>a+x.qty*x.price,0));
+ const discount=r2(+$('discount').value||0);
+ if(discount<0||discount>sub)return message('Discount sahi likhein');
+ const total=r2(sub-discount);
+ const paidRaw=$('paid').value.trim();
+ const paid=paidRaw===''?total:r2(Number(paidRaw));
+ if(!isFinite(paid)||paid<0)return message('Amount check karein');
+ if(paid>total)return message('Paid amount total se zyada hai');
+ let customer=$('bcustomer').value.trim();
+ if(paid<total&&!customer)return message('Udhaar ke liye customer name zaroori hai');
+ for(const x of cart){
+  const m=db.meds.find(m=>m.id===x.id);
+  if(!m||m.qty<x.qty)return message('Stock check karein: '+x.name);
+  if(isExpired(m))return message('Expire medicine bill se hatayein: '+x.name);
+ }
+ if(customer){
+  const c=db.customers.find(c=>same(c.name,customer));
+  if(c)customer=c.name;else db.customers.push({id:uid(),name:customer,phone:''});
+ }
+ cart.forEach(x=>{db.meds.find(m=>m.id===x.id).qty-=x.qty});
+ let invoice;
+ do{invoice='ZMS'+(Date.now()+Math.floor(Math.random()*1000)).toString().slice(-7)}while(db.sales.some(s=>s.invoice===invoice));
+ const s={invoice,ts:Date.now(),date:new Date().toLocaleDateString(),customer,items:cart.map(x=>({...x})),subtotal:sub,discount,total,paid,due:r2(total-paid)};
+ db.sales.push(s);
+ cart=[];$('discount').value=0;$('paid').value='';$('bcustomer').value='';
+ save();message('Sale complete');printObject(s);
+}
+function printObject(s){
+ const rows=s.items.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+x.qty+'</td><td>'+money(x.qty*x.price)+'</td></tr>').join('');
+ $('receipt').innerHTML='<h2 style="margin:0 0 6px">ZMS Medical Store</h2>'
+  +'<p>Invoice: '+esc(s.invoice)+'<br>Date: '+esc(s.date)+'<br>Customer: '+esc(s.customer||'Walk-in')+'</p>'
+  +'<table><thead><tr><th>Item</th><th>Qty</th><th>Amount</th></tr></thead><tbody>'+rows+'</tbody></table>'
+  +(s.discount?'<p>Discount: '+money(s.discount)+'</p>':'')
+  +'<h3>Total: '+money(s.total)+'</h3><p>Paid: '+money(s.total-s.due)+'<br>Due: '+money(s.due)+'</p><p>Shukriya!</p>';
+ setTimeout(()=>window.print(),150);
+}
+function printSale(invoice){const s=db.sales.find(x=>x.invoice===invoice);if(s)printObject(s)}
+
+/* ---------- Customers ---------- */
+function saveCustomer(){
+ const name=$('cname').value.trim();
+ if(!name)return message('Customer name likhein');
+ if(db.customers.some(c=>same(c.name,name)))return message('Customer pehle se hai');
+ db.customers.push({id:uid(),name,phone:$('cphone').value.trim()});
+ $('cname').value='';$('cphone').value='';save();message('Customer save ho gaya');
+}
+function receive(id){
+ const c=db.customers.find(c=>c.id===id);if(!c)return;
+ const due=r2(db.sales.filter(s=>same(s.customer,c.name)).reduce((a,s)=>a+s.due,0));
+ if(due<=0)return message('Is customer ka koi udhaar nahi');
+ const input=prompt('Kitni payment receive hui? (Baqaya: '+due+')');
+ if(input===null)return;
+ let amount=r2(Number(input));
+ if(!isFinite(amount)||amount<=0)return message('Sahi amount likhein');
+ if(amount>due)return message('Amount udhaar se zyada hai');
+ for(const s of db.sales.filter(s=>same(s.customer,c.name)&&s.due>0)){
+  const n=Math.min(amount,s.due);s.due=r2(s.due-n);amount=r2(amount-n);
+  if(amount<=0)break;
+ }
+ save();message('Payment record ho gayi');
+}
+
+/* ---------- Camera / Barcode ---------- */
+function stopStream(){
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ $('video').srcObject=null;
+}
+async function scan(target){
+ stopStream();
+ scanTarget=target;const token=++camToken;
+ $('cameraBox').style.display='block';
+ $('cameraStatus').textContent='Camera permission ka intezar…';
+ try{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Camera ke liye website HTTPS (ya localhost) par kholein.');
+  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  if(token!==camToken){s.getTracks().forEach(t=>t.stop());return}
+  stream=s;
+  $('video').srcObject=stream;await $('video').play();
+  if(!('BarcodeDetector' in window)){
+   $('cameraStatus').textContent='Camera open hai, magar browser auto barcode scan support nahi karta. Barcode manually type karein.';return;
+  }
+  const scanner=new BarcodeDetector();
+  $('cameraStatus').textContent='Barcode camera ke samne rakhein';
+  const detect=async()=>{
+   if(token!==camToken||!stream)return;
+   try{
+    const codes=await scanner.detect($('video'));
+    if(token!==camToken)return;
+    if(codes.length){
+     const code=codes[0].rawValue;closeCamera();
+     if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
+     else{$('mbarcode').value=code;message('Barcode fill ho gaya')}
+     return;
+    }
+   }catch(e){}
+   if(token===camToken&&stream)setTimeout(detect,300);
+  };
+  detect();
+ }catch(e){
+  if(token!==camToken)return;
+  $('cameraStatus').textContent=e.name==='NotAllowedError'?'Browser settings mein Camera permission allow karein.':(e.message||'Camera open nahi hua');
+ }
+}
+function closeCamera(){
+ camToken++;stopStream();
+ $('cameraBox').style.display='none';
+}
+
+/* ---------- Cloud login + sync (Firebase) ---------- */
+let fbAuth=null,fbDb=null,fbUser=null,unsub=null,docCache={},firstSnap=true;
+const monthKey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')};
+const emptyDb=()=>({meds:[],customers:[],sales:[]});
+function setSync(t){$('syncState').textContent=t}
+function showLogin(t){$('loginInfo').textContent=t;$('login').style.display='flex'}
+
+function buildDocs(){
+ const docs={main:JSON.stringify({meds:db.meds,customers:db.customers})};
+ const by={};
+ db.sales.forEach(s=>{const k='sales_'+(s.ts?monthKey(s.ts):'old');(by[k]=by[k]||[]).push(s)});
+ Object.keys(by).forEach(k=>docs[k]=JSON.stringify(by[k]));
+ return docs;
+}
+function cloudPush(){
+ if(!fbUser||!fbDb)return;
+ const docs=buildDocs(),col=fbDb.collection('users').doc(fbUser.uid).collection('data');
+ Object.keys(docs).forEach(k=>{
+  if(docCache[k]===docs[k])return;
+  docCache[k]=docs[k];
+  col.doc(k).set({json:docs[k],updated:firebase.firestore.FieldValue.serverTimestamp()})
+   .catch(e=>{delete docCache[k];setSync('⚠ Sync error');message('Cloud save error: '+(e.code||e.message))});
+ });
+ setSync(navigator.onLine===false?'Offline (baad mein sync hoga)':'Syncing…');
+ fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{});
+}
+function applySnapshot(snap){
+ let changed=false;
+ snap.docChanges().forEach(ch=>{
+  if(ch.type==='removed'){delete docCache[ch.doc.id];changed=true;return}
+  if(ch.doc.metadata.hasPendingWrites)return;
+  const j=(ch.doc.data()||{}).json;
+  if(typeof j==='string'&&docCache[ch.doc.id]!==j){docCache[ch.doc.id]=j;changed=true}
+ });
+ return changed;
+}
+function rebuildDb(){
+ const nd=emptyDb();
+ Object.keys(docCache).forEach(k=>{
+  try{
+   const v=JSON.parse(docCache[k]);
+   if(k==='main'){nd.meds=v.meds||[];nd.customers=v.customers||[]}
+   else if(k.indexOf('sales_')===0&&Array.isArray(v))nd.sales=nd.sales.concat(v);
+  }catch(e){}
+ });
+ nd.sales.sort((a,b)=>(a.ts||0)-(b.ts||0));
+ db=nd;normalize();
+}
+function startCloud(user){
+ if(unsub){unsub();unsub=null}
+ fbUser=user;docCache={};firstSnap=true;db=emptyDb();cart=[];
+ $('userEmail').textContent=user.email;$('userBar').style.display='block';
+ $('login').style.display='none';$('lpass').value='';$('loginErr').textContent='';
+ setSync('Loading…');render();
+ unsub=fbDb.collection('users').doc(user.uid).collection('data').onSnapshot(snap=>{
+  const changed=applySnapshot(snap);
+  if(firstSnap&&!snap.metadata.fromCache){
+   firstSnap=false;
+   if(snap.empty){
+    const old=readLegacy();
+    if(old&&((old.meds||[]).length||(old.customers||[]).length||(old.sales||[]).length)&&confirm('Is device par purana data mojood hai. Isay is account mein daalein?')){
+     db=old;normalize();cloudPush();render();return;
+    }
+   }
+  }
+  if(changed)rebuildDb();
+  render();
+  if(snap.metadata.fromCache)setSync(navigator.onLine===false?'Offline copy':'Loading…');
+  else if(!snap.metadata.hasPendingWrites)setSync('✔ Synced');
+ },err=>{setSync('⚠ Sync error');message('Cloud error: '+(err.code||err.message))});
+}
+function stopCloud(){
+ if(unsub){unsub();unsub=null}
+ fbUser=null;docCache={};db=emptyDb();cart=[];
+ $('userBar').style.display='none';render();
+ showLogin('Apne account se login karein.');
+}
+function initCloud(){
+ if(typeof firebase==='undefined'){showLogin('Login system load nahi hua. Internet on karke page refresh karein.');return}
+ firebase.initializeApp(FIREBASE_CONFIG);
+ fbAuth=firebase.auth();fbDb=firebase.firestore();
+ fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+ fbAuth.onAuthStateChanged(u=>{if(u)startCloud(u);else stopCloud()});
+ window.addEventListener('offline',()=>{if(fbUser)setSync('Offline (baad mein sync hoga)')});
+ window.addEventListener('online',()=>{if(fbUser){setSync('Syncing…');fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{})}});
+}
+function authErr(e){
+ const m={'auth/invalid-email':'Email sahi likhein','auth/missing-email':'Email likhein','auth/missing-password':'Password likhein',
+  'auth/invalid-credential':'Email ya password ghalat hai','auth/wrong-password':'Email ya password ghalat hai','auth/user-not-found':'Email ya password ghalat hai',
+  'auth/email-already-in-use':'Is email se account pehle se hai, Login karein','auth/weak-password':'Password kam az kam 6 characters ka rakhein',
+  'auth/network-request-failed':'Internet check karein','auth/too-many-requests':'Bohat koshishein ho gayin, thori der baad try karein'};
+ $('loginErr').textContent=m[e.code]||('Error: '+(e.code||e.message));
+}
+function login(){
+ if(!fbAuth)return;$('loginErr').textContent='';
+ fbAuth.signInWithEmailAndPassword($('lemail').value.trim(),$('lpass').value).catch(authErr);
+}
+function signup(){
+ if(!fbAuth)return;$('loginErr').textContent='';
+ fbAuth.createUserWithEmailAndPassword($('lemail').value.trim(),$('lpass').value).catch(authErr);
+}
+function resetPass(){
+ if(!fbAuth)return;
+ const e=$('lemail').value.trim();if(!e){$('loginErr').textContent='Pehle email likhein';return}
+ fbAuth.sendPasswordResetEmail(e).then(()=>{$('loginErr').textContent='Password reset email bhej di gayi (spam bhi dekhein)'}).catch(authErr);
+}
+function logout(){
+ if(!fbAuth)return;
+ const pending=$('syncState').textContent.indexOf('Synced')<0;
+ if(confirm(pending?'Data abhi sync nahi hua. Internet aane se pehle logout karne par naye changes zaya ho sakte hain. Phir bhi logout karein?':'Logout karein?'))fbAuth.signOut();
+}
+$('lpass').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login()}});
+
+$('bsearch').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addBill()}});
+render();
+if(CLOUD){showLogin('Load ho raha hai…');initCloud()}
+</script>
+</body>
+</html>
