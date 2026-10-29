@@ -2,41 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ZMS Medical Store</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#f1f5f9;color:#172033}
+body{font-family:Arial;background:#f1f5f9;margin:0;color:#172033}
 header{background:#087f5b;color:white;padding:20px}
-header h1{margin:0;font-size:25px}
-header p{margin:7px 0 0}
-nav{display:flex;gap:8px;padding:12px;background:white;overflow-x:auto}
-button{border:0;border-radius:8px;padding:11px 15px;background:#087f5b;color:white;font-weight:bold;cursor:pointer}
-nav button{white-space:nowrap}
-main{padding:15px;max-width:1000px;margin:auto}
-.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-.card,.panel{background:white;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0000000b}
-.card strong{display:block;font-size:23px;margin-top:10px;color:#087f5b}
-h2{font-size:19px}
-input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:7px;margin:6px 0 12px;font-size:15px}
-label{font-size:14px;font-weight:bold}
-.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:10px;border-bottom:1px solid #e2e8f0}
-.tablewrap{overflow-x:auto}
-.danger{background:#dc2626}
-.secondary{background:#475569}
-.small{font-size:13px;color:#64748b}
+main{padding:15px;max-width:800px;margin:auto}
+nav{display:flex;gap:7px;flex-wrap:wrap;padding:12px;background:white}
+button{background:#087f5b;color:white;border:0;padding:12px;border-radius:7px;margin:3px}
+input,select{display:block;width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px;border:1px solid #bbb;border-radius:7px}
+.card{background:white;padding:15px;margin:10px 0;border-radius:10px}
 section{display:none}
 section.active{display:block}
-@media(max-width:450px){.formgrid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}}
+table{width:100%;background:white;border-collapse:collapse}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.wrap{overflow-x:auto}
 </style>
 </head>
 <body>
-<header>
-<h1>💊 ZMS Medical Store</h1>
-<p>Medical Store Management System</p>
-</header>
+<header><h2>💊 ZMS Medical Store</h2><p>Medical Store Management</p></header>
 <nav>
 <button onclick="show('home')">Dashboard</button>
 <button onclick="show('medicines')">Medicines</button>
@@ -45,108 +29,208 @@ section.active{display:block}
 </nav>
 <main>
 <section id="home" class="active">
-<h2>Store Dashboard</h2>
-<div class="cards">
-<div class="card">Total Medicines<strong id="total">0</strong></div>
-<div class="card">Stock Units<strong id="units">0</strong></div>
-<div class="card">Sales Today<strong id="today">Rs 0</strong></div>
-<div class="card">Low Stock Items<strong id="low">0</strong></div>
-</div>
-<div class="panel">
-<h2>Welcome to ZMS</h2>
-<p>Manage medicine stock and sales from one place.</p>
-<p class="small">Start by adding your medicines in the Medicines section.</p>
-</div>
+<h3>Dashboard</h3>
+<div class="card">Medicine types: <b id="total">0</b></div>
+<div class="card">Total stock units: <b id="units">0</b></div>
+<div class="card">Today's sales: <b id="today">Rs 0</b></div>
+<div class="card">Low stock items: <b id="low">0</b></div>
 </section>
 
 <section id="medicines">
-<div class="panel">
-<h2>Add Medicine</h2>
+<div class="card">
+<h3>Add Medicine</h3>
 <form id="medform">
-<label>Medicine Name</label><input id="name" required placeholder="e.g. Paracetamol">
-<div class="formgrid">
-<div><label>Barcode (optional)</label><input id="barcode" placeholder="Barcode number"></div>
-<div><label>Expiry Date</label><input id="expiry" type="date" required></div>
-<div><label>Purchase Price (Rs)</label><input id="buy" type="number" min="0" step="0.01" required></div>
-<div><label>Sale Price (Rs)</label><input id="sell" type="number" min="0" step="0.01" required></div>
-<div><label>Quantity</label><input id="qty" type="number" min="0" step="1" required></div>
-<div><label>Low Stock Alert At</label><input id="minqty" type="number" min="0" value="10" required></div>
-</div>
+<label>Medicine name</label>
+<input id="medname" required>
+<label>Barcode (optional)</label>
+<input id="medbarcode">
+<label>Expiry date</label>
+<input id="medexpiry" type="date" required>
+<label>Purchase price (Rs)</label>
+<input id="medbuy" type="number" min="0" step="0.01" required>
+<label>Sale price (Rs)</label>
+<input id="medsell" type="number" min="0" step="0.01" required>
+<label>Quantity</label>
+<input id="medqty" type="number" min="0" step="1" required>
+<label>Low stock alert at</label>
+<input id="medmin" type="number" min="0" value="10" required>
 <button type="submit">Save Medicine</button>
 </form>
+<p id="medmsg"></p>
 </div>
-<div class="panel">
-<h2>Medicine Stock</h2>
-<input id="search" placeholder="Search medicine..." oninput="render()">
-<div class="tablewrap"><table><thead><tr><th>Name</th><th>Qty</th><th>Sale Price</th><th>Expiry</th><th>Action</th></tr></thead><tbody id="medrows"></tbody></table></div>
+<div class="card">
+<h3>Medicine Stock</h3>
+<input id="search" placeholder="Search medicine">
+<div class="wrap"><table>
+<thead><tr><th>Name</th><th>Qty</th><th>Sale price</th><th>Expiry</th><th>Action</th></tr></thead>
+<tbody id="medrows"></tbody>
+</table></div>
 </div>
 </section>
 
 <section id="sale">
-<div class="panel">
-<h2>New Sale</h2>
-<label>Select Medicine</label><select id="saleMed" style="width:100%;padding:12px;margin:8px 0"></select>
-<label>Quantity Sold</label><input id="saleQty" type="number" min="1" value="1">
+<div class="card">
+<h3>New Sale</h3>
+<label>Medicine</label><select id="saleMed"></select>
+<label>Quantity sold</label><input id="saleQty" type="number" min="1" value="1">
 <button onclick="sellMedicine()">Complete Sale</button>
 <p id="saleMsg"></p>
 </div>
 </section>
 
 <section id="reports">
-<div class="panel">
-<h2>Sales Report</h2>
-<p>Total Sales: <strong id="allSales">Rs 0</strong></p>
-<p>Estimated Profit: <strong id="profit">Rs 0</strong></p>
-<div class="tablewrap"><table><thead><tr><th>Date</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Profit</th></tr></thead><tbody id="salesrows"></tbody></table></div>
-<button class="secondary" onclick="exportData()">Export Backup (JSON)</button>
+<div class="card">
+<h3>Sales Report</h3>
+<p>Total sales: <b id="allSales">Rs 0</b></p>
+<p>Estimated profit: <b id="profit">Rs 0</b></p>
+<div class="wrap"><table>
+<thead><tr><th>Date</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Profit</th></tr></thead>
+<tbody id="salesrows"></tbody>
+</table></div>
+<button onclick="exportBackup()">Export Backup</button>
 </div>
 </section>
-<p class="small">ZMS • Keep regular backups of your store data.</p>
 </main>
+
 <script>
-const getData=(key)=>{try{return JSON.parse(localStorage.getItem(key))||[]}catch(e){return[]}};
-let medicines=getData('zms_medicines');
-let sales=getData('zms_sales');
-const money=n=>'Rs '+Number(n).toLocaleString('en-PK',{maximumFractionDigits:2});
-function save(){localStorage.setItem('zms_medicines',JSON.stringify(medicines));localStorage.setItem('zms_sales',JSON.stringify(sales));render()}
-function show(id){document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');render()}
-document.getElementById('medform').addEventListener('submit',e=>{
-e.preventDefault();
-medicines.push({id:Date.now(),name:name.value.trim(),barcode:barcode.value.trim(),expiry:expiry.value,buy:+buy.value,sell:+sell.value,qty:+qty.value,minqty:+minqty.value});
-save();e.target.reset();minqty.value=10;alert('Medicine saved successfully!');
+const $ = id => document.getElementById(id);
+const money = n => 'Rs ' + Number(n).toFixed(2);
+
+function load(key){
+ try{return JSON.parse(localStorage.getItem(key))||[]}
+ catch(e){return []}
+}
+let medicines=load('zms_medicines');
+let sales=load('zms_sales');
+
+function saveData(){
+ try{
+ localStorage.setItem('zms_medicines',JSON.stringify(medicines));
+ localStorage.setItem('zms_sales',JSON.stringify(sales));
+ return true;
+ }catch(e){
+ alert('Data save nahi ho saka. Browser storage check karein.');
+ return false;
+ }
+}
+
+function show(id){
+ document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
+ $(id).classList.add('active');
+ render();
+}
+
+function esc(s){
+ return String(s).replace(/[&<>"']/g,c=>({
+ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+ }[c]));
+}
+
+$('medform').addEventListener('submit',function(e){
+ e.preventDefault();
+ const m={
+ id:Date.now(),
+ name:$('medname').value.trim(),
+ barcode:$('medbarcode').value.trim(),
+ expiry:$('medexpiry').value,
+ buy:Number($('medbuy').value),
+ sell:Number($('medsell').value),
+ qty:Number($('medqty').value),
+ minqty:Number($('medmin').value)
+ };
+
+ if(!m.name||!m.expiry||m.buy<0||m.sell<0||
+ !Number.isInteger(m.qty)||m.qty<0){
+ $('medmsg').textContent='Please check all fields.';
+ return;
+ }
+
+ medicines.push(m);
+ if(!saveData()){
+ medicines.pop();
+ return;
+ }
+ this.reset();
+ $('medmin').value=10;
+ $('medmsg').textContent='Medicine successfully saved!';
+ render();
 });
+
+$('search').addEventListener('input',render);
+
 function sellMedicine(){
-const id=+document.getElementById('saleMed').value;
-const m=medicines.find(x=>x.id===id);
-const q=+document.getElementById('saleQty').value;
-const msg=document.getElementById('saleMsg');
-if(!m||!Number.isInteger(q)||q<1){msg.textContent='Please select a medicine and valid quantity.';return}
-if(m.qty<q){msg.textContent='Not enough stock available.';return}
-if(m.expiry<new Date().toISOString().slice(0,10)){msg.textContent='Expired medicine cannot be sold.';return}
-m.qty-=q;
-sales.push({date:new Date().toISOString(),name:m.name,qty:q,total:q*m.sell,profit:q*(m.sell-m.buy)});
-save();msg.textContent='Sale saved. Total: '+money(q*m.sell);
+ const id=Number($('saleMed').value);
+ const m=medicines.find(x=>x.id===id);
+ const q=Number($('saleQty').value);
+
+ if(!m||!Number.isInteger(q)||q<1){
+ $('saleMsg').textContent='Select a medicine and valid quantity.';
+ return;
+ }
+ if(m.qty<q){
+ $('saleMsg').textContent='Not enough stock.';
+ return;
+ }
+ if(m.expiry<new Date().toISOString().slice(0,10)){
+ $('saleMsg').textContent='Expired medicine cannot be sold.';
+ return;
+ }
+
+ m.qty-=q;
+ const s={
+ date:new Date().toISOString(),
+ name:m.name,qty:q,total:q*m.sell,
+ profit:q*(m.sell-m.buy)
+ };
+ sales.push(s);
+
+ if(!saveData()){
+ m.qty+=q;sales.pop();return;
+ }
+ $('saleMsg').textContent='Sale saved. Total: '+money(s.total);
+ $('saleQty').value=1;
+ render();
 }
+
+function deleteMedicine(id){
+ if(confirm('Delete this medicine?')){
+ medicines=medicines.filter(m=>m.id!==id);
+ saveData();render();
+ }
+}
+
 function render(){
-document.getElementById('total').textContent=medicines.length;
-document.getElementById('units').textContent=medicines.reduce((a,m)=>a+m.qty,0);
-const today=new Date().toISOString().slice(0,10);
-document.getElementById('today').textContent=money(sales.filter(s=>s.date.slice(0,10)===today).reduce((a,s)=>a+s.total,0));
-document.getElementById('low').textContent=medicines.filter(m=>m.qty<=m.minqty).length;
-const term=(document.getElementById('search')?.value||'').toLowerCase();
-document.getElementById('medrows').innerHTML=medicines.filter(m=>m.name.toLowerCase().includes(term)).map(m=>`<tr><td>${esc(m.name)}</td><td>${m.qty}</td><td>${money(m.sell)}</td><td>${m.expiry}</td><td><button class="danger" onclick="delMed(${m.id})">Delete</button></td></tr>`).join('')||'<tr><td colspan="5">No medicines added yet.</td></tr>';
-document.getElementById('saleMed').innerHTML=medicines.map(m=>`<option value="${m.id}">${esc(m.name)} (Stock: ${m.qty})</option>`).join('');
-document.getElementById('allSales').textContent=money(sales.reduce((a,s)=>a+s.total,0));
-document.getElementById('profit').textContent=money(sales.reduce((a,s)=>a+s.profit,0));
-document.getElementById('salesrows').innerHTML=sales.slice().reverse().map(s=>`<tr><td>${s.date.slice(0,10)}</td><td>${esc(s.name)}</td><td>${s.qty}</td><td>${money(s.total)}</td><td>${money(s.profit)}</td></tr>`).join('')||'<tr><td colspan="5">No sales yet.</td></tr>';
+ $('total').textContent=medicines.length;
+ $('units').textContent=medicines.reduce((a,m)=>a+m.qty,0);
+ const day=new Date().toISOString().slice(0,10);
+ $('today').textContent=money(sales.filter(s=>s.date.slice(0,10)===day).reduce((a,s)=>a+s.total,0));
+ $('low').textContent=medicines.filter(m=>m.qty<=m.minqty).length;
+
+ const term=($('search').value||'').toLowerCase();
+ $('medrows').innerHTML=medicines.filter(m=>m.name.toLowerCase().includes(term)).map(m=>
+ `<tr><td>${esc(m.name)}</td><td>${m.qty}</td><td>${money(m.sell)}</td><td>${esc(m.expiry)}</td><td><button onclick="deleteMedicine(${m.id})">Delete</button></td></tr>`
+ ).join('')||'<tr><td colspan="5">No medicines added.</td></tr>';
+
+ $('saleMed').innerHTML=medicines.map(m=>
+ `<option value="${m.id}">${esc(m.name)} (Stock ${m.qty})</option>`
+ ).join('');
+
+ $('allSales').textContent=money(sales.reduce((a,s)=>a+s.total,0));
+ $('profit').textContent=money(sales.reduce((a,s)=>a+s.profit,0));
+ $('salesrows').innerHTML=sales.slice().reverse().map(s=>
+ `<tr><td>${esc(s.date.slice(0,10))}</td><td>${esc(s.name)}</td><td>${s.qty}</td><td>${money(s.total)}</td><td>${money(s.profit)}</td></tr>`
+ ).join('')||'<tr><td colspan="5">No sales yet.</td></tr>';
 }
-function delMed(id){if(confirm('Delete this medicine?')){medicines=medicines.filter(m=>m.id!==id);save()}}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function exportData(){
-const blob=new Blob([JSON.stringify({medicines,sales},null,2)],{type:'application/json'});
-const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='zms-backup.json';a.click();URL.revokeObjectURL(a.href);
+
+function exportBackup(){
+ const blob=new Blob([JSON.stringify({medicines,sales},null,2)],{type:'application/json'});
+ const a=document.createElement('a');
+ const url=URL.createObjectURL(blob);
+ a.href=url;a.download='zms-backup.json';a.click();
+ URL.revokeObjectURL(url);
 }
+
 render();
 </script>
 </body>
-  </html>
+</html>
