@@ -272,8 +272,7 @@ for(let i of cart){let m=medicine(i.mid);if(!m||i.qty>m.qty)return msg("Stock ch
 let subtotal=cart.reduce((a,i)=>a+i.qty*i.price,0),discount=Number($("saleDiscount").value||0),total=subtotal-discount,paid=Number($("salePaid").value||0);
 if(discount<0||discount>subtotal||paid<0||paid>total)return msg("Discount ya paid amount check karein.");
 let name=$("saleCustomer").value.trim(),method=$("saleMethod").value;
-if(paid<total&&!name)return
-msg("Udhaar ke liye customer ka naam zaroori hai.");
+if(paid<total&&!name)return msg("Udhaar ke liye customer ka naam zaroori hai.");
 let c=name?customerByName(name):null;
 if(name&&!c){c={id:uid(),name,phone:""};db.customers.push(c)}
 let items=cart.map(i=>({mid:i.mid,name:medicine(i.mid).name,qty:i.qty,price:i.price,cost:i.cost}));
@@ -296,13 +295,11 @@ s.returned=s.total;s.profit=0;
 if(s.due>0)s.due=0;
 save();msg("Return record ho gaya. Paid refund ko cash records mein manually reconcile karein.");
 }
-$
 $("customerForm").addEventListener("submit",e=>{e.preventDefault();let name=$("cName").value.trim();if(customerByName(name))return msg("Customer pehle se mojood hai.");db.customers.push({id:uid(),name,phone:$("cPhone").value.trim()});save();e.target.reset();msg("Customer save ho gaya.")});
 function customerDue(c){return db.sales.filter(s=>s.customerId===c.id).reduce((a,s)=>a+Math.max(0,s.due||0),0)}
 function renderCustomers(){
 $("customerRows").innerHTML=db.customers.filter(c=>(c.name+" "+c.phone).toLowerCase().includes($("customerSearch").value.toLowerCase())).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${money(customerDue(c))}</td><td><button class="secondary" onclick="selectPayment('${c.id}')">Receive payment</button></td></tr>`).join("")||'<tr><td colspan="4">No customers.</td></tr>';
 $("customerOptions").innerHTML=db.customers.map(c=>`<option value="${esc(c.name)}"></option>`).join("");
-$
 $("paymentCustomer").innerHTML=db.customers.map(c=>`<option value="${c.id}">${esc(c.name)} — ${money(customerDue(c))}</option>`).join("");
 }
 function selectPayment(id){$("paymentCustomer").value=id;document.querySelector('[data-tab="customers"]').click();$("paymentAmount").focus()}
@@ -322,8 +319,12 @@ db.purchases.push(p);addStockMove(m.id,qty,"Purchase",p.invoice);save();e.target
 });
 function renderPurchases(){$("purchaseRows").innerHTML=db.purchases.slice().reverse().map(p=>`<tr><td>${esc(localDate(p.date))}</td><td>${esc(p.invoice)}</td><td>${esc(p.name)}</td><td>${p.qty}</td><td>${money(p.total)}</td><td>${money(p.paid)}</td><td>${money(p.due)}</td></tr>`).join("")||'<tr><td colspan="7">No purchases.</td></tr>'}
 $("expenseForm").addEventListener("submit",e=>{e.preventDefault();db.expenses.push({id:uid(),category:$("eCategory").value.trim(),amount:Number($("eAmount").value),date:$("eDate").value,note:$("eNote").value});save();e.target.reset();$("eDate").value=today();msg("Expense save ho gaya.")});
-function renderExpenses(){$("expenseRows").innerHTML=db.expenses.slice().reverse().map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.category)}</td><td>${esc(x.note)}</td><td>${money(x.amount)}</td><td><button class="danger" onclick="deleteExpense('${x.id}')">Delete</button></td></tr>`).join("")||'<tr><td colspan="5">No expenses.</td></tr>'}
-function deleteExpense(id){if(confirm("Expense delete karein?"))
+function deleteExpense(id){
+  if(confirm("Expense delete karein?")){
+    db.expenses=db.expenses.filter(x=>x.id!==id);
+    save();
+  }
+}
 ?")){db.expenses=db.expenses.filter(x=>x.id!==id);save()}}
 function setReportDates(){if(!$("rFrom").value)$("rFrom").value=today();if(!$("rTo").value)$("rTo").value=today()}
 $("reportForm").addEventListener("submit",e=>{e.preventDefault();renderReport()});
