@@ -3,234 +3,272 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#087f8c">
 <title>ZMS Medical Store</title>
 <style>
-body{font-family:Arial;background:#f1f5f9;margin:0;color:#172033}
-header{background:#087f5b;color:white;padding:20px}
-main{padding:15px;max-width:800px;margin:auto}
-nav{display:flex;gap:7px;flex-wrap:wrap;padding:12px;background:white}
-button{background:#087f5b;color:white;border:0;padding:12px;border-radius:7px;margin:3px}
-input,select{display:block;width:100%;box-sizing:border-box;padding:12px;margin:7px 0 14px;border:1px solid #bbb;border-radius:7px}
-.card{background:white;padding:15px;margin:10px 0;border-radius:10px}
+:root{--main:#087f8c;--dark:#075e66;--bg:#f3f6fa;--red:#c62828;--green:#16834a}
+*{box-sizing:border-box}
+body{margin:0;font:15px Arial,sans-serif;background:var(--bg);color:#18232e}
+header{background:var(--dark);color:white;padding:18px}
+header h2{margin:0 0 5px}
+header p{margin:0;font-size:13px}
+nav{display:flex;gap:7px;overflow:auto;padding:10px;background:white;position:sticky;top:0;z-index:2}
+button,.tab{border:0;border-radius:7px;padding:10px 13px;cursor:pointer;font-weight:600}
+nav button{background:#e5f0f2;color:#16434a;white-space:nowrap}
+nav button.active,.primary{background:var(--main);color:white}
+main{padding:14px;max-width:1200px;margin:auto}
 section{display:none}
 section.active{display:block}
-table{width:100%;background:white;border-collapse:collapse}
-td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
-.wrap{overflow-x:auto}
+h3{margin-top:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:12px 0}
+.card,.panel{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px #0000000b;margin-bottom:12px}
+.card small{color:#65717d}
+.big{font-size:23px;font-weight:bold;margin-top:9px;overflow-wrap:anywhere}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5df;border-radius:7px;background:white;font-size:14px;min-width:0}
+label{font-size:12px;color:#53616d;display:block;margin-bottom:4px}
+.field{min-width:0}
+.full{grid-column:1/-1}
+button.danger{background:#ffe8e8;color:#a51919}
+button.secondary{background:#e8eef4;color:#263b50}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tablewrap{overflow-x:auto;background:white;border-radius:8px;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #e5eaf0}
+th{background:#edf4f6}
+.muted{color:#687582;font-size:13px}
+.good{color:var(--green)}.bad{color:var(--red)}
+.notice{background:#fff4d8;padding:12px;border-radius:8px;font-size:13px;margin:10px 0}
+#message{position:fixed;bottom:12px;left:10px;right:10px;background:#173c44;color:white;padding:12px;border-radius:8px;display:none;z-index:5}
+@media(min-width:700px){main{padding:22px}header{padding:22px}}
+@media print{header,nav,.noprint,button,form,.notice{display:none!important}body{background:white}main{padding:0}section{display:none!important}section.active{display:block!important}.panel,.card{box-shadow:none}}
 </style>
 </head>
 <body>
-<header><h2>💊 ZMS Medical Store</h2><p>Medical Store Management</p></header>
-<nav>
-<button onclick="show('home')">Dashboard</button>
-<button onclick="show('medicines')">Medicines</button>
-<button onclick="show('sale')">New Sale</button>
-<button onclick="show('reports')">Reports</button>
+<header>
+<h2>💊 ZMS Medical Store</h2>
+<p>Offline Store Management · Stock · Sales · Accounts</p>
+</header>
+<nav class="noprint">
+<button class="active" data-tab="dashboard">Dashboard</button>
+<button data-tab="medicines">Medicines</button>
+<button data-tab="sales">Billing / Sales</button>
+<button data-tab="customers">Customers / Udhaar</button>
+<button data-tab="purchases">Purchases</button>
+<button data-tab="expenses">Expenses</button>
+<button data-tab="reports">Reports</button>
+<button data-tab="backup">Backup</button>
 </nav>
 <main>
-<section id="home" class="active">
+<section id="dashboard" class="active">
 <h3>Dashboard</h3>
-<div class="card">Medicine types: <b id="total">0</b></div>
-<div class="card">Total stock units: <b id="units">0</b></div>
-<div class="card">Today's sales: <b id="today">Rs 0</b></div>
-<div class="card">Low stock items: <b id="low">0</b></div>
+<div class="cards">
+<div class="card"><small>Total medicines</small><div class="big" id="dMeds">0</div></div>
+<div class="card"><small>Stock units</small><div class="big" id="dStock">0</div></div>
+<div class="card"><small>Today's sales</small><div class="big" id="dSales">Rs 0</div></div>
+<div class="card"><small>Today's profit*</small><div class="big good" id="dProfit">Rs 0</div></div>
+<div class="card"><small>Low stock items</small><div class="big" id="dLow">0</div></div>
+<div class="card"><small>Expired medicines</small><div class="big bad" id="dExpired">0</div></div>
+<div class="card"><small>Customer udhaar</small><div class="big" id="dDebt">Rs 0</div></div>
+<div class="card"><small>Supplier payable</small><div class="big" id="dPayable">Rs 0</div></div>
+</div>
+<p class="muted">*Estimated profit = sale amount minus recorded purchase cost, returns and expenses. Taxes and other costs are included only if entered.</p>
+<div class="panel"><h3>Expiry / Low Stock Alerts</h3><div id="alerts"></div></div>
 </section>
 
 <section id="medicines">
-<div class="card">
-<h3>Add Medicine</h3>
-<form id="medform">
-<label>Medicine name</label>
-<input id="medname" required>
-<label>Barcode (optional)</label>
-<input id="medbarcode">
-<label>Expiry date</label>
-<input id="medexpiry" type="date" required>
-<label>Purchase price (Rs)</label>
-<input id="medbuy" type="number" min="0" step="0.01" required>
-<label>Sale price (Rs)</label>
-<input id="medsell" type="number" min="0" step="0.01" required>
-<label>Quantity</label>
-<input id="medqty" type="number" min="0" step="1" required>
-<label>Low stock alert at</label>
-<input id="medmin" type="number" min="0" value="10" required>
-<button type="submit">Save Medicine</button>
-</form>
-<p id="medmsg"></p>
+<h3>Medicine Inventory</h3>
+<div class="panel">
+<form id="medicineForm">
+<input type="hidden" id="mId">
+<div class="field"><label>Medicine name *</label><input id="mName" required placeholder="Panadol"></div>
+<div class="field"><label>Company</label><input id="mCompany" placeholder="Company name"></div>
+<div class="field"><label>Barcode / Code</label><input id="mBarcode" placeholder="Scan or type"></div>
+<div class="field"><label>Batch number</label><input id="mBatch"></div>
+<div class="field"><label>Expiry date</label><input id="mExpiry" type="date"></div>
+<div class="field"><label>Purchase price per unit (Rs) *</label><input id="mCost" type="number" min="0" step=".01" required></div>
+<div class="field"><label>Sale price per unit (Rs) *</label><input id="mPrice" type="number" min="0" step=".01" required></div>
+<div class="field"><label>Opening stock (smallest units) *</label><input id="mQty" type="number" min="0" step="1" required></div>
+<div class="field"><label>Units per pack</label><input id="mPack" type="number" min="1" step="1" value="1" required></div>
+<div class="field"><label>Low-stock alert at</label><input id="mLow" type="number" min="0" step="1" value="10"></div>
+<div class="field"><label>Pack label</label><input id="mUnit" placeholder="Tablet / bottle / strip"></div>
+<div class="field"><label>Supplier</label><input id="mSupplier"></div>
+<div class="full actions">
+<button class="primary" type="submit">Save Medicine</button>
+<button class="secondary" type="button" onclick="resetMedicine()">Clear</button>
 </div>
-<div class="card">
-<h3>Medicine Stock</h3>
-<input id="search" placeholder="Search medicine">
-<div class="wrap"><table>
-<thead><tr><th>Name</th><th>Qty</th><th>Sale price</th><th>Expiry</th><th>Action</th></tr></thead>
-<tbody id="medrows"></tbody>
-</table></div>
+</form>
+<p class="muted">Each medicine is stored in its smallest saleable unit. Example: 1 strip = 10 tablets; enter stock as tablets and set units per pack to 10.</p>
+</div>
+<div class="panel">
+<input id="medSearch" placeholder="Search name, company, barcode or batch..." oninput="renderMedicines()">
+<div class="tablewrap"><table><thead><tr><th>Name / Batch</th><th>Expiry</th><th>Stock</th><th>Cost</th><th>Sale</th><th>Actions</th></tr></thead><tbody id="medicineRows"></tbody></table></div>
 </div>
 </section>
 
-<section id="sale">
-<div class="card">
-<h3>New Sale</h3>
-<label>Medicine</label><select id="saleMed"></select>
-<label>Quantity sold</label><input id="saleQty" type="number" min="1" value="1">
-<button onclick="sellMedicine()">Complete Sale</button>
-<p id="saleMsg"></p>
+<section id="sales">
+<h3>Billing / New Sale</h3>
+<div class="panel">
+<div class="field"><label>Find medicine by name or barcode</label><input id="saleSearch" list="medicineOptions" placeholder="Type medicine / scan barcode"><datalist id="medicineOptions"></datalist></div>
+<div class="actions"><button class="primary" onclick="addToCart()">Add to bill</button></div>
+<div class="tablewrap"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Sale price</th><th>Amount</th><th>Remove</th></tr></thead><tbody id="cartRows"></tbody></table></div>
+<div class="cards">
+<div class="card"><small>Subtotal (Rs)</small><div class="big" id="cartSubtotal">0</div></div>
+<div class="card"><small>Discount (Rs)</small><input id="saleDiscount" type="number" min="0" step=".01" value="0" oninput="renderCart()"></div>
+<div class="card"><small>Total (Rs)</small><div class="big" id="cartTotal">0</div></div>
+</div>
+<form id="saleForm">
+<div class="field"><label>Customer</label><input id="saleCustomer" list="customerOptions" placeholder="Walk-in customer"><datalist id="customerOptions"></datalist></div>
+<div class="field"><label>Payment method</label><select id="saleMethod"><option>Cash</option><option>Bank</option><option>Mobile Wallet</option><option>Credit / Udhaar</option></select></div>
+<div class="field"><label>Amount paid (Rs)</label><input id="salePaid" type="number" min="0" step=".01" value="0"></div>
+<div class="full"><button class="primary" type="submit">Complete Sale & Print Receipt</button></div>
+</form>
+<p class="muted">Stock is deducted when a sale is completed. Credit balance is added to the named customer.</p>
+</div>
+<div class="panel"><h3>Recent Sales</h3><div class="tablewrap"><table><thead><tr><th>Invoice</th><th>Date / time</th><th>Customer</th><th>Total</th><th>Profit*</th><th>Action</th></tr></thead><tbody id="recentSales"></tbody></table></div></div>
+</section>
+
+<section id="customers">
+<h3>Customers / Udhaar</h3>
+<div class="panel">
+<form id="customerForm">
+<div class="field"><label>Customer name *</label><input id="cName" required></div>
+<div class="field"><label>Phone</label><input id="cPhone" type="tel"></div>
+<div class="full"><button class="primary">Save Customer</button></div>
+</form>
+</div>
+<div class="panel"><input id="customerSearch" placeholder="Search customer..." oninput="renderCustomers()"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Outstanding udhaar</th><th>Payment received</th></tr></thead><tbody id="customerRows"></tbody></table></div></div>
+<div class="panel"><h3>Receive Customer Payment</h3>
+<form id="paymentForm">
+<div class="field"><label>Customer</label><select id="paymentCustomer" required></select></div>
+<div class="field"><label>Amount received (Rs)</label><input id="paymentAmount" type="number" min=".01" step=".01" required></div>
+<div class="full"><button class="primary">Record Payment</button></div>
+</form>
+</div>
+</section>
+
+<section id="purchases">
+<h3>Purchase Stock</h3>
+<div class="panel">
+<form id="purchaseForm">
+<div class="field"><label>Medicine *</label><select id="pMedicine" required></select></div>
+<div class="field"><label>Quantity (smallest units) *</label><input id="pQty" type="number" min="1" step="1" required></div>
+<div class="field"><label>Purchase cost per unit (Rs) *</label><input id="pCost" type="number" min="0" step=".01" required></div>
+<div class="field"><label>Supplier</label><input id="pSupplier"></div>
+<div class="field"><label>Supplier invoice number</label><input id="pInvoice"></div>
+<div class="field"><label>Amount paid (Rs)</label><input id="pPaid" type="number" min="0" step=".01" value="0"></div>
+<div class="full"><button class="primary">Save Purchase & Add Stock</button></div>
+</form>
+</div>
+<div class="panel"><h3>Purchase History</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="purchaseRows"></tbody></table></div></div>
+</section>
+
+<section id="expenses">
+<h3>Store Expenses</h3>
+<div class="panel">
+<form id="expenseForm">
+<div class="field"><label>Expense category *</label><input id="eCategory" required placeholder="Rent, electricity, salary..."></div>
+<div class="field"><label>Amount (Rs) *</label><input id="eAmount" type="number" min=".01" step=".01" required></div>
+<div class="field"><label>Date *</label><input id="eDate" type="date" required></div>
+<div class="field"><label>Note</label><input id="eNote"></div>
+<div class="full"><button class="primary">Save Expense</button></div>
+</form>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th>Action</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
 </div>
 </section>
 
 <section id="reports">
-<div class="card">
-<h3>Sales Report</h3>
-<p>Total sales: <b id="allSales">Rs 0</b></p>
-<p>Estimated profit: <b id="profit">Rs 0</b></p>
-<div class="wrap"><table>
-<thead><tr><th>Date</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Profit</th></tr></thead>
-<tbody id="salesrows"></tbody>
-</table></div>
-<button onclick="exportBackup()">Export Backup</button>
+<h3>Reports</h3>
+<div class="panel">
+<form id="reportForm">
+<div class="field"><label>From date</label><input type="date" id="rFrom" required></div>
+<div class="field"><label>To date</label><input type="date" id="rTo" required></div>
+<div class="full"><button class="primary">Generate Report</button><button class="secondary" type="button" onclick="print()">Print</button></div>
+</form>
+<div class="cards">
+<div class="card"><small>Sales</small><div class="big" id="rSales">Rs 0</div></div>
+<div class="card"><small>Estimated gross profit</small><div class="big" id="rProfit">Rs 0</div></div>
+<div class="card"><small>Expenses</small><div class="big" id="rExpenses">Rs 0</div></div>
+<div class="card"><small>Estimated net profit</small><div class="big" id="rNet">Rs 0</div></div>
+<div class="card"><small>Discounts</small><div class="big" id="rDiscount">Rs 0</div></div>
+</div>
+<p class="muted">Profit estimate uses the purchase cost recorded for each medicine at the time of sale. This is a basic management report, not a tax or audited accounting report.</p>
+<div class="tablewrap"><table><thead><tr><th>Medicine</th><th>Qty sold</th><th>Sales value</th><th>Profit</th></tr></thead><tbody id="reportRows"></tbody></table></div>
+</div>
+</section>
+
+<section id="backup">
+<h3>Backup / Restore</h3>
+<div class="panel">
+<p>Apna data regular backup karein. Browser ka data clear ho jaye ya device lost ho to backup file se restore kar sakte hain.</p>
+<div class="actions"><button class="primary" onclick="exportBackup()">Download Backup</button><button class="secondary" onclick="document.getElementById('backupFile').click()">Restore Backup</button><input id="backupFile" type="file" accept=".json,application/json" hidden onchange="importBackup(event)"></div>
+<div class="notice">Important: data isi device aur browser mein save hota hai. GitHub par app ka code publish hota hai, tumhara store data nahi. Backup file ko safe jagah rakho.</div>
+<button class="danger" onclick="clearAllData()">Delete All Store Data</button>
 </div>
 </section>
 </main>
-
+<div id="message"></div>
 <script>
-const $ = id => document.getElementById(id);
-const money = n => 'Rs ' + Number(n).toFixed(2);
-
-function load(key){
- try{return JSON.parse(localStorage.getItem(key))||[]}
- catch(e){return []}
-}
-let medicines=load('zms_medicines');
-let sales=load('zms_sales');
-
-function saveData(){
- try{
- localStorage.setItem('zms_medicines',JSON.stringify(medicines));
- localStorage.setItem('zms_sales',JSON.stringify(sales));
- return true;
- }catch(e){
- alert('Data save nahi ho saka. Browser storage check karein.');
- return false;
- }
-}
-
-function show(id){
- document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));
- $(id).classList.add('active');
- render();
-}
-
-function esc(s){
- return String(s).replace(/[&<>"']/g,c=>({
- '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
- }[c]));
-}
-
-$('medform').addEventListener('submit',function(e){
- e.preventDefault();
- const m={
- id:Date.now(),
- name:$('medname').value.trim(),
- barcode:$('medbarcode').value.trim(),
- expiry:$('medexpiry').value,
- buy:Number($('medbuy').value),
- sell:Number($('medsell').value),
- qty:Number($('medqty').value),
- minqty:Number($('medmin').value)
- };
-
- if(!m.name||!m.expiry||m.buy<0||m.sell<0||
- !Number.isInteger(m.qty)||m.qty<0){
- $('medmsg').textContent='Please check all fields.';
- return;
- }
-
- medicines.push(m);
- if(!saveData()){
- medicines.pop();
- return;
- }
- this.reset();
- $('medmin').value=10;
- $('medmsg').textContent='Medicine successfully saved!';
- render();
+"use strict";
+const KEY="zms_store_v1";
+const $=id=>document.getElementById(id);
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>"Rs "+Number(n||0).toLocaleString("en-PK",{minimumFractionDigits:2,maximumFractionDigits:2});
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const initial=()=>({medicines:[],sales:[],customers:[],payments:[],purchases:[],expenses:[],stockMoves:[],nextInvoice:1});
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY))||initial()}catch(e){db=initial()}
+let cart=[];
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db));renderAll()}catch(e){alert("Storage full. Pehle backup karein.")}}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function msg(s){let el=$("message");el.textContent=s;el.style.display="block";setTimeout(()=>el.style.display="none",2600)}
+function dateTime(){return new Date().toISOString()}
+function localDate(iso){if(!iso)return "";let d=new Date(iso);return isNaN(d)?String(iso):d.toLocaleString()}
+function medicine(id){return db.medicines.find(m=>m.id===id)}
+function customerByName(name){return db.customers.find(c=>c.name.trim().toLowerCase()===String(name||"").trim().toLowerCase())}
+function addStockMove(mid,qty,type,ref){db.stockMoves.push({id:uid(),mid,qty,type,ref,date:dateTime()})}
+document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));
+document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));
+if(b.dataset.tab==="reports")setReportDates();
+}));
+function resetMedicine(){$("medicineForm").reset();$("mId").value="";$("mPack").value=1;$("mLow").value=10}
+$("medicineForm").addEventListener("submit",e=>{
+e.preventDefault();
+let id=$("mId").value, old=medicine(id);
+let qty=Number($("mQty").value), cost=Number($("mCost").value), price=Number($("mPrice").value), pack=Number($("mPack").value);
+if(!Number.isInteger(qty)||qty<0||!Number.isInteger(pack)||pack<1||cost<0||price<0)return msg("Quantity, pack aur prices check karein.");
+let m={id:id||uid(),name:$("mName").value.trim(),company:$("mCompany").value.trim(),barcode:$("mBarcode").value.trim(),batch:$("mBatch").value.trim(),expiry:$("mExpiry").value,cost,price,qty:old?old.qty:qty,pack,low:Number($("mLow").value||0),unit:$("mUnit").value.trim(),supplier:$("mSupplier").value.trim()};
+if(!m.name)return msg("Medicine name zaroori hai.");
+if(db.medicines.some(x=>x.id!==m.id&&m.barcode&&x.barcode===m.barcode))return msg("Ye barcode pehle se use ho raha hai.");
+if(old){Object.assign(old,m);if(qty!==old.qty){let delta=qty-old.qty;old.qty=qty;addStockMove(old.id,delta,"Stock adjustment","Manual edit")}}
+else{db.medicines.push(m);if(qty)addStockMove(m.id,qty,"Opening stock","Opening")}
+save();resetMedicine();msg("Medicine save ho gayi.");
 });
-
-$('search').addEventListener('input',render);
-
-function sellMedicine(){
- const id=Number($('saleMed').value);
- const m=medicines.find(x=>x.id===id);
- const q=Number($('saleQty').value);
-
- if(!m||!Number.isInteger(q)||q<1){
- $('saleMsg').textContent='Select a medicine and valid quantity.';
- return;
- }
- if(m.qty<q){
- $('saleMsg').textContent='Not enough stock.';
- return;
- }
- if(m.expiry<new Date().toISOString().slice(0,10)){
- $('saleMsg').textContent='Expired medicine cannot be sold.';
- return;
- }
-
- m.qty-=q;
- const s={
- date:new Date().toISOString(),
- name:m.name,qty:q,total:q*m.sell,
- profit:q*(m.sell-m.buy)
- };
- sales.push(s);
-
- if(!saveData()){
- m.qty+=q;sales.pop();return;
- }
- $('saleMsg').textContent='Sale saved. Total: '+money(s.total);
- $('saleQty').value=1;
- render();
+function renderMedicines(){
+let q=$("medSearch").value.toLowerCase();
+$("medicineRows").innerHTML=db.medicines.filter(m=>[m.name,m.company,m.barcode,m.batch].some(v=>String(v||"").toLowerCase().includes(q))).map(m=>`<tr><td><b>${esc(m.name)}</b><br>${esc(m.company)}<br><small>${esc(m.batch)} ${esc(m.barcode)}</small></td><td>${esc(m.expiry||"—")}</td><td>${m.qty} ${esc(m.unit)}<br><small>Low at ${m.low}</small></td><td>${money(m.cost)}</td><td>${money(m.price)}</td><td><button class="secondary" onclick="editMedicine('${m.id}')">Edit</button> <button class="danger" onclick="deleteMedicine('${m.id}')">Delete</button></td></tr>`).join("")||'<tr><td colspan="6">No medicines found.</td></tr>';
+$("medicineOptions").innerHTML=db.medicines.map(m=>`<option value="${esc(m.barcode||m.name)}">${esc(m.name)} · stock ${m.qty}</option>`).join("");
 }
-
-function deleteMedicine(id){
- if(confirm('Delete this medicine?')){
- medicines=medicines.filter(m=>m.id!==id);
- saveData();render();
- }
+function editMedicine(id){let m=medicine(id);if(!m)return;$("mId").value=m.id;$("mName").value=m.name;$("mCompany").value=m.company;$("mBarcode").value=m.barcode;$("mBatch").value=m.batch;$("mExpiry").value=m.expiry;$("mCost").value=m.cost;$("mPrice").value=m.price;$("mQty").value=m.qty;$("mPack").value=m.pack;$("mLow").value=m.low;$("mUnit").value=m.unit;$("mSupplier").value=m.supplier;window.scrollTo(0,0)}
+function deleteMedicine(id){if(db.sales.some(s=>s.items.some(i=>i.mid===id)))return msg("Is medicine ki sales history hai, delete nahi kar sakte.");if(confirm("Medicine delete karni hai?")){db.medicines=db.medicines.filter(m=>m.id!==id);save()}}
+function findMed(s){s=String(s||"").trim().toLowerCase();return db.medicines.find(m=>m.barcode.toLowerCase()===s)||db.medicines.find(m=>m.name.toLowerCase()===s)}
+function addToCart(){
+let m=findMed($("saleSearch").value);if(!m)return msg("Medicine nahi mili. Pehle inventory mein add karein.");
+let item=cart.find(i=>i.mid===m.id);if(item){if(item.qty+1>m.qty)return msg("Stock kam hai.");item.qty++}else{if(m.qty<1)return msg("Stock khatam hai.");cart.push({mid:m.id,qty:1,price:m.price,cost:m.cost})}
+$("saleSearch").value="";renderCart();
 }
-
-function render(){
- $('total').textContent=medicines.length;
- $('units').textContent=medicines.reduce((a,m)=>a+m.qty,0);
- const day=new Date().toISOString().slice(0,10);
- $('today').textContent=money(sales.filter(s=>s.date.slice(0,10)===day).reduce((a,s)=>a+s.total,0));
- $('low').textContent=medicines.filter(m=>m.qty<=m.minqty).length;
-
- const term=($('search').value||'').toLowerCase();
- $('medrows').innerHTML=medicines.filter(m=>m.name.toLowerCase().includes(term)).map(m=>
- `<tr><td>${esc(m.name)}</td><td>${m.qty}</td><td>${money(m.sell)}</td><td>${esc(m.expiry)}</td><td><button onclick="deleteMedicine(${m.id})">Delete</button></td></tr>`
- ).join('')||'<tr><td colspan="5">No medicines added.</td></tr>';
-
- $('saleMed').innerHTML=medicines.map(m=>
- `<option value="${m.id}">${esc(m.name)} (Stock ${m.qty})</option>`
- ).join('');
-
- $('allSales').textContent=money(sales.reduce((a,s)=>a+s.total,0));
- $('profit').textContent=money(sales.reduce((a,s)=>a+s.profit,0));
- $('salesrows').innerHTML=sales.slice().reverse().map(s=>
- `<tr><td>${esc(s.date.slice(0,10))}</td><td>${esc(s.name)}</td><td>${s.qty}</td><td>${money(s.total)}</td><td>${money(s.profit)}</td></tr>`
- ).join('')||'<tr><td colspan="5">No sales yet.</td></tr>';
+function renderCart(){
+$("cartRows").innerHTML=cart.map((i,n)=>{let m=medicine(i.mid);return `<tr><td>${esc(m?.name||"Deleted")}</td><td><input aria-label="Quantity" type="number" min="1" max="${m?.qty||1}" value="${i.qty}" style="width:80px" onchange="setCartQty(${n},this.value)"></td><td><input aria-label="Sale price" type="number" min="0" step=".01" value="${i.price}" style="width:100px" onchange="setCartPrice(${n},this.value)"></td><td>${money(i.qty*i.price)}</td><td><button class="danger" onclick="cart.splice(${n},1);renderCart()">Remove</button></td></tr>`}).join("")||'<tr><td colspan="5">Bill empty hai.</td></tr>';
+let sub=cart.reduce((a,i)=>a+i.qty*i.price,0),discount=Math.max(0,Number($("saleDiscount").value)||0);
+$("cartSubtotal").textContent=money(sub);$("cartTotal").textContent=money(Math.max(0,sub-discount));
 }
-
-function exportBackup(){
- const blob=new Blob([JSON.stringify({medicines,sales},null,2)],{type:'application/json'});
- const a=document.createElement('a');
- const url=URL.createObjectURL(blob);
- a.href=url;a.download='zms-backup.json';a.click();
- URL.revokeObjectURL(url);
-}
-
-render();
-</script>
-</body>
-</html>
+function setCartQty(n,v){let i=cart[n],m=medicine(i.mid),q=Number(v);if(!Number.isInteger(q)||q<1||q>m.qty){msg("Quantity stock ke andar honi chahiye.");renderCart();return}i.qty=q;renderCart()}
+function setCartPrice(n,v){let p=Number(v);if(!Number.isFinite(p)||p<0){msg("Price sahi enter karein.");renderCart();return}cart[n].price=p;renderCart()}
+$("saleForm").addEventListener("submit",e=>{
+e.preventDefault();if(!cart.length)return msg("Bill mein medicine add karein.");
+for(let i of cart){let m=medicine(i.mid);if(!m||i.qty>m.qty)return msg("Stock change hua hai; bill check karein.")}
+let subtotal=cart.reduce((a,i)=>a+i.qty*i.price,0),discount=Number($("saleDiscount").value||0),total=subtotal-discount,paid=Number($("salePaid").value||0);
+if(discount<0||discount>subtotal||paid<0||paid>total)return msg("Discount ya paid amount check karein.");
+let name=$("saleCustomer").value.trim(),method=$("saleMethod").value;
+if(paid<total&&!n
