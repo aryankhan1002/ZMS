@@ -3,374 +3,217 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#087f8c">
-  <link rel="manifest" href="./manifest.json">
 <title>ZMS Medical Store</title>
 <style>
-:root{--main:#087f8c;--dark:#075e66;--bg:#f3f6fa;--red:#c62828;--green:#16834a}
-*{box-sizing:border-box}
-body{margin:0;font:15px Arial,sans-serif;background:var(--bg);color:#18232e}
-header{background:var(--dark);color:white;padding:18px}
-header h2{margin:0 0 5px}
-header p{margin:0;font-size:13px}
-nav{display:flex;gap:7px;overflow:auto;padding:10px;background:white;position:sticky;top:0;z-index:2}
-button,.tab{border:0;border-radius:7px;padding:10px 13px;cursor:pointer;font-weight:600}
-nav button{background:#e5f0f2;color:#16434a;white-space:nowrap}
-nav button.active,.primary{background:var(--main);color:white}
-main{padding:14px;max-width:1200px;margin:auto}
+body{margin:0;font:15px Arial;background:#f2f5f8;color:#18232e}
+header{background:#075e66;color:white;padding:16px}
+nav{display:flex;gap:6px;overflow:auto;background:white;padding:10px}
+button{border:0;padding:10px;border-radius:6px;background:#087f8c;color:white;cursor:pointer}
+nav button{white-space:nowrap}
+main{padding:12px;max-width:950px;margin:auto}
 section{display:none}
 section.active{display:block}
-h3{margin-top:8px}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:12px 0}
-.card,.panel{background:white;padding:15px;border-radius:10px;box-shadow:0 2px 8px #0000000b;margin-bottom:12px}
-.card small{color:#65717d}
-.big{font-size:23px;font-weight:bold;margin-top:9px;overflow-wrap:anywhere}
-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
-input,select,textarea{width:100%;padding:11px;border:1px solid #cbd5df;border-radius:7px;background:white;font-size:14px;min-width:0}
-label{font-size:12px;color:#53616d;display:block;margin-bottom:4px}
-.field{min-width:0}
-.full{grid-column:1/-1}
-button.danger{background:#ffe8e8;color:#a51919}
-button.secondary{background:#e8eef4;color:#263b50}
-.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.tablewrap{overflow-x:auto;background:white;border-radius:8px;margin-top:10px}
-table{border-collapse:collapse;width:100%;font-size:13px;min-width:620px}
-th,td{text-align:left;padding:10px;border-bottom:1px solid #e5eaf0}
-th{background:#edf4f6}
-.muted{color:#687582;font-size:13px}
-.good{color:var(--green)}.bad{color:var(--red)}
-.notice{background:#fff4d8;padding:12px;border-radius:8px;font-size:13px;margin:10px 0}
-#message{position:fixed;bottom:12px;left:10px;right:10px;background:#173c44;color:white;padding:12px;border-radius:8px;display:none;z-index:5}
-@media(min-width:700px){main{padding:22px}header{padding:22px}}
-@media print{header,nav,.noprint,button,form,.notice{display:none!important}body{background:white}main{padding:0}section{display:none!important}section.active{display:block!important}.panel,.card{box-shadow:none}}
+.panel,.card{background:white;padding:13px;margin:10px 0;border-radius:9px}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+input,select{padding:10px;width:100%;box-sizing:border-box;margin:4px 0 10px;border:1px solid #ccd4dc;border-radius:5px}
+table{width:100%;border-collapse:collapse;min-width:500px}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.table{overflow:auto}
+#cameraBox{display:none;position:fixed;inset:0;background:#111;color:white;padding:15px;z-index:9}
+video{width:100%;max-height:65vh}
 </style>
 </head>
 <body>
-<header>
-<h2>💊 ZMS Medical Store</h2>
-<p>Offline Store Management · Stock · Sales · Accounts</p>
-</header>
-<nav class="noprint">
-<button class="active" data-tab="dashboard">Dashboard</button>
-<button data-tab="medicines">Medicines</button>
-<button data-tab="sales">Billing / Sales</button>
-<button data-tab="customers">Customers / Udhaar</button>
-<button data-tab="purchases">Purchases</button>
-<button data-tab="expenses">Expenses</button>
-<button data-tab="reports">Reports</button>
-<button data-tab="backup">Backup</button>
+<header><h2>ZMS Medical Store</h2>Medicine Stock & Billing</header>
+<nav>
+<button onclick="tab('home')">Dashboard</button>
+<button onclick="tab('meds')">Medicines</button>
+<button onclick="tab('bill')">Billing</button>
+<button onclick="tab('cust')">Customers/Udhaar</button>
 </nav>
 <main>
-<section id="dashboard" class="active">
+<section id="home" class="active">
 <h3>Dashboard</h3>
 <div class="cards">
-<div class="card"><small>Total medicines</small><div class="big" id="dMeds">0</div></div>
-<div class="card"><small>Stock units</small><div class="big" id="dStock">0</div></div>
-<div class="card"><small>Today's sales</small><div class="big" id="dSales">Rs 0</div></div>
-<div class="card"><small>Today's profit*</small><div class="big good" id="dProfit">Rs 0</div></div>
-<div class="card"><small>Low stock items</small><div class="big" id="dLow">0</div></div>
-<div class="card"><small>Expired medicines</small><div class="big bad" id="dExpired">0</div></div>
-<div class="card"><small>Customer udhaar</small><div class="big" id="dDebt">Rs 0</div></div>
-<div class="card"><small>Supplier payable</small><div class="big" id="dPayable">Rs 0</div></div>
+<div class="card">Medicines<h2 id="totalMeds">0</h2></div>
+<div class="card">Stock Units<h2 id="totalStock">0</h2></div>
+<div class="card">Today's Sales<h2 id="totalSales">Rs 0</h2></div>
+<div class="card">Total Udhaar<h2 id="totalDue">Rs 0</h2></div>
 </div>
-<p class="muted">*Estimated profit = sale amount minus recorded purchase cost, returns and expenses. Taxes and other costs are included only if entered.</p>
-<div class="panel"><h3>Expiry / Low Stock Alerts</h3><div id="alerts"></div></div>
+<div class="panel"><b>Low Stock Alerts</b><div id="alerts"></div></div>
 </section>
 
-<section id="medicines">
-<h3>Medicine Inventory</h3>
+<section id="meds">
+<h3>Medicine Stock</h3>
 <div class="panel">
-<form id="medicineForm">
-<input type="hidden" id="mId">
-<div class="field"><label>Medicine name *</label><input id="mName" required placeholder="Panadol"></div>
-<div class="field"><label>Company</label><input id="mCompany" placeholder="Company name"></div>
-<div class="field"><label>Barcode / Code</label><input id="mBarcode" placeholder="Scan or type"></div>
-<div class="field"><label>Batch number</label><input id="mBatch"></div>
-<div class="field"><label>Expiry date</label><input id="mExpiry" type="date"></div>
-<div class="field"><label>Purchase price per unit (Rs) *</label><input id="mCost" type="number" min="0" step=".01" required></div>
-<div class="field"><label>Sale price per unit (Rs) *</label><input id="mPrice" type="number" min="0" step=".01" required></div>
-<div class="field"><label>Opening stock (smallest units) *</label><input id="mQty" type="number" min="0" step="1" required></div>
-<div class="field"><label>Units per pack</label><input id="mPack" type="number" min="1" step="1" value="1" required></div>
-<div class="field"><label>Low-stock alert at</label><input id="mLow" type="number" min="0" step="1" value="10"></div>
-<div class="field"><label>Pack label</label><input id="mUnit" placeholder="Tablet / bottle / strip"></div>
-<div class="field"><label>Supplier</label><input id="mSupplier"></div>
-<div class="full actions">
-<button class="primary" type="submit">Save Medicine</button>
-<button class="secondary" type="button" onclick="resetMedicine()">Clear</button>
-</div>
-</form>
-<p class="muted">Each medicine is stored in its smallest saleable unit. Example: 1 strip = 10 tablets; enter stock as tablets and set units per pack to 10.</p>
+<input id="mid" type="hidden">
+<label>Medicine Name</label><input id="mname" placeholder="Medicine name">
+<label>Barcode</label><input id="mbarcode" placeholder="Barcode number">
+<button onclick="scan('medicine')">📷 Scan Barcode</button>
+<label>Expiry Date</label><input id="mexpiry" type="date">
+<label>Purchase Price</label><input id="mcost" type="number" min="0">
+<label>Sale Price</label><input id="mprice" type="number" min="0">
+<label>Stock Quantity</label><input id="mqty" type="number" min="0">
+<button onclick="saveMed()">Save Medicine</button>
+<button onclick="clearMed()">Clear</button>
 </div>
 <div class="panel">
-<input id="medSearch" placeholder="Search name, company, barcode or batch..." oninput="renderMedicines()">
-<div class="tablewrap"><table><thead><tr><th>Name / Batch</th><th>Expiry</th><th>Stock</th><th>Cost</th><th>Sale</th><th>Actions</th></tr></thead><tbody id="medicineRows"></tbody></table></div>
+<input id="msearch" placeholder="Search medicine" oninput="render()">
+<div class="table"><table><thead><tr><th>Name</th><th>Stock</th><th>Price</th><th>Action</th></tr></thead><tbody id="medRows"></tbody></table></div>
 </div>
 </section>
 
-<section id="sales">
-<h3>Billing / New Sale</h3>
+<section id="bill">
+<h3>Billing</h3>
 <div class="panel">
-<div class="field"><label>Find medicine by name or barcode</label><input id="saleSearch" list="medicineOptions" placeholder="Type medicine / scan barcode"><datalist id="medicineOptions"></datalist></div>
-<div class="actions"><button class="primary" onclick="addToCart()">Add to bill</button></div>
-<div class="tablewrap"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Sale price</th><th>Amount</th><th>Remove</th></tr></thead><tbody id="cartRows"></tbody></table></div>
-<div class="cards">
-<div class="card"><small>Subtotal (Rs)</small><div class="big" id="cartSubtotal">0</div></div>
-<div class="card"><small>Discount (Rs)</small><input id="saleDiscount" type="number" min="0" step=".01" value="0" oninput="renderCart()"></div>
-<div class="card"><small>Total (Rs)</small><div class="big" id="cartTotal">0</div></div>
+<label>Medicine Name or Barcode</label>
+<input id="bsearch" placeholder="Type medicine or barcode">
+<button onclick="addBill()">Add Medicine</button>
+<button onclick="scan('bill')">📷 Scan Barcode</button>
+<div class="table"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Price</th><th>Remove</th></tr></thead><tbody id="cartRows"></tbody></table></div>
+<p>Subtotal: <b id="subtotal">Rs 0</b></p>
+<label>Discount</label><input id="discount" type="number" value="0" min="0" oninput="renderCart()">
+<h3>Total: <span id="grandtotal">Rs 0</span></h3>
+<label>Customer Name (udhaar ke liye)</label><input id="bcustomer">
+<label>Amount Paid</label><input id="paid" type="number" value="0" min="0">
+<button onclick="finishSale()">Complete Sale & Print</button>
 </div>
-<form id="saleForm">
-<div class="field"><label>Customer</label><input id="saleCustomer" list="customerOptions" placeholder="Walk-in customer"><datalist id="customerOptions"></datalist></div>
-<div class="field"><label>Payment method</label><select id="saleMethod"><option>Cash</option><option>Bank</option><option>Mobile Wallet</option><option>Credit / Udhaar</option></select></div>
-<div class="field"><label>Amount paid (Rs)</label><input id="salePaid" type="number" min="0" step=".01" value="0"></div>
-<div class="full"><button class="primary" type="submit">Complete Sale & Print Receipt</button></div>
-</form>
-<p class="muted">Stock is deducted when a sale is completed. Credit balance is added to the named customer.</p>
-</div>
-<div class="panel"><h3>Recent Sales</h3><div class="tablewrap"><table><thead><tr><th>Invoice</th><th>Date / time</th><th>Customer</th><th>Total</th><th>Profit*</th><th>Action</th></tr></thead><tbody id="recentSales"></tbody></table></div></div>
+<div class="panel"><h3>Recent Sales</h3><div id="salesRows"></div></div>
 </section>
 
-<section id="customers">
+<section id="cust">
 <h3>Customers / Udhaar</h3>
 <div class="panel">
-<form id="customerForm">
-<div class="field"><label>Customer name *</label><input id="cName" required></div>
-<div class="field"><label>Phone</label><input id="cPhone" type="tel"></div>
-<div class="full"><button class="primary">Save Customer</button></div>
-</form>
+<label>Customer Name</label><input id="cname">
+<label>Phone</label><input id="cphone">
+<button onclick="saveCustomer()">Save Customer</button>
 </div>
-<div class="panel"><input id="customerSearch" placeholder="Search customer..." oninput="renderCustomers()"><div class="tablewrap"><table><thead><tr><th>Name</th><th>Phone</th><th>Outstanding udhaar</th><th>Payment received</th></tr></thead><tbody id="customerRows"></tbody></table></div></div>
-<div class="panel"><h3>Receive Customer Payment</h3>
-<form id="paymentForm">
-<div class="field"><label>Customer</label><select id="paymentCustomer" required></select></div>
-<div class="field"><label>Amount received (Rs)</label><input id="paymentAmount" type="number" min=".01" step=".01" required></div>
-<div class="full"><button class="primary">Record Payment</button></div>
-</form>
-</div>
-</section>
-
-<section id="purchases">
-<h3>Purchase Stock</h3>
 <div class="panel">
-<form id="purchaseForm">
-<div class="field"><label>Medicine *</label><select id="pMedicine" required></select></div>
-<div class="field"><label>Quantity (smallest units) *</label><input id="pQty" type="number" min="1" step="1" required></div>
-<div class="field"><label>Purchase cost per unit (Rs) *</label><input id="pCost" type="number" min="0" step=".01" required></div>
-<div class="field"><label>Supplier</label><input id="pSupplier"></div>
-<div class="field"><label>Supplier invoice number</label><input id="pInvoice"></div>
-<div class="field"><label>Amount paid (Rs)</label><input id="pPaid" type="number" min="0" step=".01" value="0"></div>
-<div class="full"><button class="primary">Save Purchase & Add Stock</button></div>
-</form>
-</div>
-<div class="panel"><h3>Purchase History</h3><div class="tablewrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Medicine</th><th>Qty</th><th>Total</th><th>Paid</th><th>Due</th></tr></thead><tbody id="purchaseRows"></tbody></table></div></div>
-</section>
-
-<section id="expenses">
-<h3>Store Expenses</h3>
-<div class="panel">
-<form id="expenseForm">
-<div class="field"><label>Expense category *</label><input id="eCategory" required placeholder="Rent, electricity, salary..."></div>
-<div class="field"><label>Amount (Rs) *</label><input id="eAmount" type="number" min=".01" step=".01" required></div>
-<div class="field"><label>Date *</label><input id="eDate" type="date" required></div>
-<div class="field"><label>Note</label><input id="eNote"></div>
-<div class="full"><button class="primary">Save Expense</button></div>
-</form>
-<div class="tablewrap"><table><thead><tr><th>Date</th><th>Category</th><th>Note</th><th>Amount</th><th>Action</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
-</div>
-</section>
-
-<section id="reports">
-<h3>Reports</h3>
-<div class="panel">
-<form id="reportForm">
-<div class="field"><label>From date</label><input type="date" id="rFrom" required></div>
-<div class="field"><label>To date</label><input type="date" id="rTo" required></div>
-<div class="full"><button class="primary">Generate Report</button><button class="secondary" type="button" onclick="print()">Print</button></div>
-</form>
-<div class="cards">
-<div class="card"><small>Sales</small><div class="big" id="rSales">Rs 0</div></div>
-<div class="card"><small>Estimated gross profit</small><div class="big" id="rProfit">Rs 0</div></div>
-<div class="card"><small>Expenses</small><div class="big" id="rExpenses">Rs 0</div></div>
-<div class="card"><small>Estimated net profit</small><div class="big" id="rNet">Rs 0</div></div>
-<div class="card"><small>Discounts</small><div class="big" id="rDiscount">Rs 0</div></div>
-</div>
-<p class="muted">Profit estimate uses the purchase cost recorded for each medicine at the time of sale. This is a basic management report, not a tax or audited accounting report.</p>
-<div class="tablewrap"><table><thead><tr><th>Medicine</th><th>Qty sold</th><th>Sales value</th><th>Profit</th></tr></thead><tbody id="reportRows"></tbody></table></div>
-</div>
-</section>
-
-<section id="backup">
-<h3>Backup / Restore</h3>
-<div class="panel">
-<p>Apna data regular backup karein. Browser ka data clear ho jaye ya device lost ho to backup file se restore kar sakte hain.</p>
-<div class="actions"><button class="primary" onclick="exportBackup()">Download Backup</button><button class="secondary" onclick="document.getElementById('backupFile').click()">Restore Backup</button><input id="backupFile" type="file" accept=".json,application/json" hidden onchange="importBackup(event)"></div>
-<div class="notice">Important: data isi device aur browser mein save hota hai. GitHub par app ka code publish hota hai, tumhara store data nahi. Backup file ko safe jagah rakho.</div>
-<button class="danger" onclick="clearAllData()">Delete All Store Data</button>
+<input id="csearch" placeholder="Search customer" oninput="render()">
+<div class="table"><table><thead><tr><th>Name</th><th>Phone</th><th>Due</th><th>Payment</th></tr></thead><tbody id="custRows"></tbody></table></div>
 </div>
 </section>
 </main>
-<div id="message"></div>
+<div id="cameraBox">
+<h3>Scan Barcode</h3><p id="cameraStatus">Starting camera…</p>
+<video id="video" playsinline></video><br>
+<button onclick="closeCamera()">Close Camera</button>
+</div>
+<div id="msg" style="position:fixed;bottom:10px;background:#075e66;color:white;padding:10px;display:none"></div>
 <script>
-"use strict";
-const KEY="zms_store_v1";
 const $=id=>document.getElementById(id);
-const today=()=>new Date().toISOString().slice(0,10);
-const money=n=>"Rs "+Number(n||0).toLocaleString("en-PK",{minimumFractionDigits:2,maximumFractionDigits:2});
-const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-const initial=()=>({medicines:[],sales:[],customers:[],payments:[],purchases:[],expenses:[],stockMoves:[],nextInvoice:1});
-let db;
-try{db=JSON.parse(localStorage.getItem(KEY))||initial()}catch(e){db=initial()}
-let cart=[];
-function save(){try{localStorage.setItem(KEY,JSON.stringify(db));renderAll()}catch(e){alert("Storage full. Pehle backup karein.")}}
-function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function msg(s){let el=$("message");el.textContent=s;el.style.display="block";setTimeout(()=>el.style.display="none",2600)}
-function dateTime(){return new Date().toISOString()}
-function localDate(iso){if(!iso)return "";let d=new Date(iso);return isNaN(d)?String(iso):d.toLocaleString()}
-function medicine(id){return db.medicines.find(m=>m.id===id)}
-function customerByName(name){return db.customers.find(c=>c.name.trim().toLowerCase()===String(name||"").trim().toLowerCase())}
-function addStockMove(mid,qty,type,ref){db.stockMoves.push({id:uid(),mid,qty,type,ref,date:dateTime()})}
-document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
-document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("active",x===b));
-document.querySelectorAll("main section").forEach(x=>x.classList.toggle("active",x.id===b.dataset.tab));
-if(b.dataset.tab==="reports")setReportDates();
-}));
-function resetMedicine(){$("medicineForm").reset();$("mId").value="";$("mPack").value=1;$("mLow").value=10}
-$("medicineForm").addEventListener("submit",e=>{
-e.preventDefault();
-let id=$("mId").value, old=medicine(id);
-let qty=Number($("mQty").value), cost=Number($("mCost").value), price=Number($("mPrice").value), pack=Number($("mPack").value);
-if(!Number.isInteger(qty)||qty<0||!Number.isInteger(pack)||pack<1||cost<0||price<0)return msg("Quantity, pack aur prices check karein.");
-let m={id:id||uid(),name:$("mName").value.trim(),company:$("mCompany").value.trim(),barcode:$("mBarcode").value.trim(),batch:$("mBatch").value.trim(),expiry:$("mExpiry").value,cost,price,qty:old?old.qty:qty,pack,low:Number($("mLow").value||0),unit:$("mUnit").value.trim(),supplier:$("mSupplier").value.trim()};
-if(!m.name)return msg("Medicine name zaroori hai.");
-if(db.medicines.some(x=>x.id!==m.id&&m.barcode&&x.barcode===m.barcode))return msg("Ye barcode pehle se use ho raha hai.");
-if(old){Object.assign(old,m);if(qty!==old.qty){let delta=qty-old.qty;old.qty=qty;addStockMove(old.id,delta,"Stock adjustment","Manual edit")}}
-else{db.medicines.push(m);if(qty)addStockMove(m.id,qty,"Opening stock","Opening")}
-save();resetMedicine();msg("Medicine save ho gayi.");
-});
-function renderMedicines(){
-let q=$("medSearch").value.toLowerCase();
-$("medicineRows").innerHTML=db.medicines.filter(m=>[m.name,m.company,m.barcode,m.batch].some(v=>String(v||"").toLowerCase().includes(q))).map(m=>`<tr><td><b>${esc(m.name)}</b><br>${esc(m.company)}<br><small>${esc(m.batch)} ${esc(m.barcode)}</small></td><td>${esc(m.expiry||"—")}</td><td>${m.qty} ${esc(m.unit)}<br><small>Low at ${m.low}</small></td><td>${money(m.cost)}</td><td>${money(m.price)}</td><td><button class="secondary" onclick="editMedicine('${m.id}')">Edit</button> <button class="danger" onclick="deleteMedicine('${m.id}')">Delete</button></td></tr>`).join("")||'<tr><td colspan="6">No medicines found.</td></tr>';
-$("medicineOptions").innerHTML=db.medicines.map(m=>`<option value="${esc(m.barcode||m.name)}">${esc(m.name)} · stock ${m.qty}</option>`).join("");
+let db={meds:[],customers:[],sales:[]},cart=[],stream=null,scanner=null,scanTarget='bill';
+try{db=JSON.parse(localStorage.getItem('zmsData'))||db}catch(e){}
+function save(){localStorage.setItem('zmsData',JSON.stringify(db));render()}
+function money(n){return 'Rs '+Number(n||0).toFixed(2)}
+function message(t){$('msg').textContent=t;$('msg').style.display='block';setTimeout(()=>$('msg').style.display='none',2500)}
+function tab(id){document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');render()}
+function clearMed(){['mid','mname','mbarcode','mexpiry','mcost','mprice','mqty'].forEach(id=>$(id).value='')}
+function saveMed(){
+ let name=$('mname').value.trim();
+ if(!name||$('mprice').value===''||$('mcost').value===''||$('mqty').value==='')return message('Medicine ki tamam details bharein.');
+ let id=$('mid').value;
+ let m={id:id||Date.now().toString(),name,barcode:$('mbarcode').value.trim(),expiry:$('mexpiry').value,cost:+$('mcost').value,price:+$('mprice').value,qty:+$('mqty').value};
+ if(id){let i=db.meds.findIndex(x=>x.id===id);if(i>=0)db.meds[i]=m}
+ else db.meds.push(m);
+ save();clearMed();message('Medicine save ho gayi');
 }
-function editMedicine(id){let m=medicine(id);if(!m)return;$("mId").value=m.id;$("mName").value=m.name;$("mCompany").value=m.company;$("mBarcode").value=m.barcode;$("mBatch").value=m.batch;$("mExpiry").value=m.expiry;$("mCost").value=m.cost;$("mPrice").value=m.price;$("mQty").value=m.qty;$("mPack").value=m.pack;$("mLow").value=m.low;$("mUnit").value=m.unit;$("mSupplier").value=m.supplier;window.scrollTo(0,0)}
-function deleteMedicine(id){if(db.sales.some(s=>s.items.some(i=>i.mid===id)))return msg("Is medicine ki sales history hai, delete nahi kar sakte.");if(confirm("Medicine delete karni hai?")){db.medicines=db.medicines.filter(m=>m.id!==id);save()}}
-function findMed(s){s=String(s||"").trim().toLowerCase();return db.medicines.find(m=>m.barcode.toLowerCase()===s)||db.medicines.find(m=>m.name.toLowerCase()===s)}
-function addToCart(){
-let m=findMed($("saleSearch").value);if(!m)return msg("Medicine nahi mili. Pehle inventory mein add karein.");
-let item=cart.find(i=>i.mid===m.id);if(item){if(item.qty+1>m.qty)return msg("Stock kam hai.");item.qty++}else{if(m.qty<1)return msg("Stock khatam hai.");cart.push({mid:m.id,qty:1,price:m.price,cost:m.cost})}
-$("saleSearch").value="";renderCart();
+function editMed(id){
+ let m=db.meds.find(x=>x.id===id);if(!m)return;
+ $('mid').value=m.id;$('mname').value=m.name;$('mbarcode').value=m.barcode;
+ $('mexpiry').value=m.expiry;$('mcost').value=m.cost;$('mprice').value=m.price;$('mqty').value=m.qty;tab('meds');
+}
+function render(){
+ $('totalMeds').textContent=db.meds.length;
+ $('totalStock').textContent=db.meds.reduce((a,m)=>a+m.qty,0);
+ $('totalSales').textContent=money(db.sales.filter(s=>s.date===new Date().toLocaleDateString()).reduce((a,s)=>a+s.total,0));
+ $('totalDue').textContent=money(db.sales.reduce((a,s)=>a+s.due,0));
+ $('alerts').innerHTML=db.meds.filter(m=>m.qty<=5).map(m=>'<p>'+m.name+' — Stock: '+m.qty+'</p>').join('')||'No alerts';
+ let q=$('msearch').value.toLowerCase();
+ $('medRows').innerHTML=db.meds.filter(m=>(m.name+' '+m.barcode).toLowerCase().includes(q)).map(m=>`<tr><td>${m.name}</td><td>${m.qty}</td><td>${money(m.price)}</td><td><button onclick="editMed('${m.id}')">Edit</button> <button onclick="deleteMed('${m.id}')">Delete</button></td></tr>`).join('');
+ $('custRows').innerHTML=db.customers.filter(c=>c.name.toLowerCase().includes($('csearch').value.toLowerCase())).map(c=>`<tr><td>${c.name}</td><td>${c.phone}</td><td>${money(db.sales.filter(s=>s.customer===c.name).reduce((a,s)=>a+s.due,0))}</td><td><button onclick="receive('${c.name}')">Receive</button></td></tr>`).join('');
+ $('salesRows').innerHTML=db.sales.slice().reverse().slice(0,10).map(s=>`<p>${s.invoice} — ${s.customer||'Walk-in'} — ${money(s.total)} — Due ${money(s.due)} <button onclick="printSale('${s.invoice}')">Print</button></p>`).join('');
+ renderCart();
+}
+function deleteMed(id){if(confirm('Medicine delete karein?')){db.meds=db.meds.filter(m=>m.id!==id);save()}}
+function addBill(){
+ let q=$('bsearch').value.trim().toLowerCase();
+ let m=db.meds.find(m=>m.name.toLowerCase()===q||m.barcode.toLowerCase()===q);
+ if(!m)return message('Medicine nahi mili');
+ let item=cart.find(x=>x.id===m.id);
+ if(m.qty<1)return message('Stock khatam hai');
+ if(item){if(item.qty>=m.qty)return message('Stock kam hai');item.qty++}
+ else cart.push({id:m.id,name:m.name,price:m.price,qty:1});
+ $('bsearch').value='';renderCart();
 }
 function renderCart(){
-$("cartRows").innerHTML=cart.map((i,n)=>{let m=medicine(i.mid);return `<tr><td>${esc(m?.name||"Deleted")}</td><td><input aria-label="Quantity" type="number" min="1" max="${m?.qty||1}" value="${i.qty}" style="width:80px" onchange="setCartQty(${n},this.value)"></td><td><input aria-label="Sale price" type="number" min="0" step=".01" value="${i.price}" style="width:100px" onchange="setCartPrice(${n},this.value)"></td><td>${money(i.qty*i.price)}</td><td><button class="danger" onclick="cart.splice(${n},1);renderCart()">Remove</button></td></tr>`}).join("")||'<tr><td colspan="5">Bill empty hai.</td></tr>';
-let sub=cart.reduce((a,i)=>a+i.qty*i.price,0),discount=Math.max(0,Number($("saleDiscount").value)||0);
-$("cartSubtotal").textContent=money(sub);$("cartTotal").textContent=money(Math.max(0,sub-discount));
+ $('cartRows').innerHTML=cart.map((x,i)=>`<tr><td>${x.name}</td><td><button onclick="changeQty(${i},-1)">−</button> ${x.qty} <button onclick="changeQty(${i},1)">+</button></td><td>${money(x.qty*x.price)}</td><td><button onclick="cart.splice(${i},1);renderCart()">X</button></td></tr>`).join('');
+ let sub=cart.reduce((a,x)=>a+x.qty*x.price,0),total=Math.max(0,sub-(+$('discount').value||0));
+ $('subtotal').textContent=money(sub);$('grandtotal').textContent=money(total);
 }
-function setCartQty(n,v){let i=cart[n],m=medicine(i.mid),q=Number(v);if(!Number.isInteger(q)||q<1||q>m.qty){msg("Quantity stock ke andar honi chahiye.");renderCart();return}i.qty=q;renderCart()}
-function setCartPrice(n,v){let p=Number(v);if(!Number.isFinite(p)||p<0){msg("Price sahi enter karein.");renderCart();return}cart[n].price=p;renderCart()}
-$("saleForm").addEventListener("submit",e=>{
-e.preventDefault();if(!cart.length)return msg("Bill mein medicine add karein.");
-for(let i of cart){let m=medicine(i.mid);if(!m||i.qty>m.qty)return msg("Stock change hua hai; bill check karein.")}
-let subtotal=cart.reduce((a,i)=>a+i.qty*i.price,0),discount=Number($("saleDiscount").value||0),total=subtotal-discount,paid=Number($("salePaid").value||0);
-if(discount<0||discount>subtotal||paid<0||paid>total)return msg("Discount ya paid amount check karein.");
-let name=$("saleCustomer").value.trim(),method=$("saleMethod").value;
-if(paid<total&&!name)return msg("Udhaar ke liye customer ka naam zaroori hai.");
-let c=name?customerByName(name):null;
-if(name&&!c){c={id:uid(),name,phone:""};db.customers.push(c)}
-let items=cart.map(i=>({mid:i.mid,name:medicine(i.mid).name,qty:i.qty,price:i.price,cost:i.cost}));
-items.forEach(i=>{let m=medicine(i.mid);m.qty-=i.qty;addStockMove(m.id,-i.qty,"Sale",db.nextInvoice)});
-let profit=items.reduce((a,i)=>a+i.qty*(i.price-i.cost),0)-discount;
-let sale={id:uid(),invoice:"ZMS-"+String(db.nextInvoice++).padStart(5,"0"),date:dateTime(),customerId:c?.id||"",customer:name||"Walk-in",method,items,subtotal,discount,total,paid,due:total-paid,profit,returned:0};
-db.sales.push(sale);save();cart=[];$("saleDiscount").value=0;$("salePaid").value=0;$("saleCustomer").value="";renderCart();printReceipt(sale);msg("Sale save ho gayi.");
-});
-function printReceipt(s){
-let w=window.open("","_blank");if(!w)return msg("Popup allow karein, phir receipt print karein.");
-w.document.write(`<html><head><title>${esc(s.invoice)}</title><style>body{font:14px Arial;max-width:360px;margin:20px auto}table{width:100%;border-collapse:collapse}td,th{padding:6px;border-bottom:1px solid #ddd;text-align:left}.r{text-align:right}</style></head><body><h2>ZMS Medical Store</h2><p>Invoice: ${esc(s.invoice)}<br>Date: ${esc(localDate(s.date))}<br>Customer: ${esc(s.customer)}</p><table><tr><th>Item</th><th>Qty</th><th>Amount</th></tr>${s.items.map(i=>`<tr><td>${esc(i.name)}</td><td>${i.qty}</td><td>${money(i.qty*i.price)}</td></tr>`).join("")}</table><p>Subtotal: ${money(s.subtotal)}<br>Discount: ${money(s.discount)}<br><b>Total: ${money(s.total)}</b><br>Paid: ${money(s.paid)}<br>Due: ${money(s.due)}</p><p>Thank you!</p><script>window.onload=()=>window.print()<\/script></body></html>`);w.document.close();
+function changeQty(i,n){let item=cart[i],m=db.meds.find(x=>x.id===item.id);if(item.qty+n<1)return;if(n>0&&item.qty>=m.qty)return message('Stock kam hai');item.qty+=n;renderCart()}
+function finishSale(){
+ if(!cart.length)return message('Bill khali hai');
+ let sub=cart.reduce((a,x)=>a+x.qty*x.price,0),discount=+$('discount').value||0,total=sub-discount,paid=+$('paid').value||0,customer=$('bcustomer').value.trim();
+ if(discount<0||discount>sub||paid<0||paid>total)return message('Amount check karein');
+ if(paid<total&&!customer)return message('Udhaar ke liye customer name zaroori hai');
+ for(let x of cart){let m=db.meds.find(m=>m.id===x.id);if(!m||m.qty<x.qty)return message('Stock check karein')}
+ cart.forEach(x=>db.meds.find(m=>m.id===x.id).qty-=x.qty);
+ let s={invoice:'ZMS'+Date.now().toString().slice(-7),date:new Date().toLocaleDateString(),customer,items:cart.map(x=>({...x})),total,due:total-paid};
+ db.sales.push(s);cart=[];$('discount').value=0;$('paid').value=0;$('bcustomer').value='';save();message('Sale complete');printObject(s);
 }
-function renderSales(){$("recentSales").innerHTML=db.sales.slice().reverse().slice(0,30).map(s=>`<tr><td>${esc(s.invoice)}</td><td>${esc(localDate(s.date))}</td><td>${esc(s.customer)}</td><td>${money(s.total-s.returned)}</td><td>${money(s.profit)}</td><td><button class="secondary" onclick="reprint('${s.id}')">Receipt</button> <button class="danger" onclick="returnSale('${s.id}')">Return all</button></td></tr>`).join("")||'<tr><td colspan="6">No sales yet.</td></tr>'}
-function reprint(id){let s=db.sales.find(x=>x.id===id);if(s)printReceipt(s)}
-function returnSale(id){
-let s=db.sales.find(x=>x.id===id);if(!s||s.returned>=s.total)return msg("Sale already returned.");
-if(!confirm("Is invoice ki tamam items return karni hain? Ye full return hai."))return;
-s.items.forEach(i=>{let m=medicine(i.mid);if(m){m.qty+=i.qty;addStockMove(m.id,i.qty,"Sales return",s.invoice)}});
-s.returned=s.total;s.profit=0;
-if(s.due>0)s.due=0;
-save();msg("Return record ho gaya. Paid refund ko cash records mein manually reconcile karein.");
+function printObject(s){
+ let w=window.open('','_blank');if(!w)return message('Print ke liye pop-ups allow karein');
+ w.document.write('<h2>ZMS Medical Store</h2><p>Invoice: '+s.invoice+'</p><p>Customer: '+(s.customer||'Walk-in')+'</p>'+s.items.map(x=>'<p>'+x.name+' x '+x.qty+' = '+money(x.qty*x.price)+'</p>').join('')+'<h3>Total: '+money(s.total)+'</h3><p>Due: '+money(s.due)+'</p><button onclick="print()">Print Receipt</button>');
 }
-$("customerForm").addEventListener("submit",e=>{e.preventDefault();let name=$("cName").value.trim();if(customerByName(name))return msg("Customer pehle se mojood hai.");db.customers.push({id:uid(),name,phone:$("cPhone").value.trim()});save();e.target.reset();msg("Customer save ho gaya.")});
-function customerDue(c){return db.sales.filter(s=>s.customerId===c.id).reduce((a,s)=>a+Math.max(0,s.due||0),0)}
-function renderCustomers(){
-$("customerRows").innerHTML=db.customers.filter(c=>(c.name+" "+c.phone).toLowerCase().includes($("customerSearch").value.toLowerCase())).map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td>${money(customerDue(c))}</td><td><button class="secondary" onclick="selectPayment('${c.id}')">Receive payment</button></td></tr>`).join("")||'<tr><td colspan="4">No customers.</td></tr>';
-$("customerOptions").innerHTML=db.customers.map(c=>`<option value="${esc(c.name)}"></option>`).join("");
-$("paymentCustomer").innerHTML=db.customers.map(c=>`<option value="${c.id}">${esc(c.name)} — ${money(customerDue(c))}</option>`).join("");
+function printSale(invoice){let s=db.sales.find(x=>x.invoice===invoice);if(s)printObject(s)}
+function saveCustomer(){
+ let name=$('cname').value.trim();if(!name)return message('Customer name likhein');
+ if(db.customers.some(c=>c.name.toLowerCase()===name.toLowerCase()))return message('Customer pehle se hai');
+ db.customers.push({name,phone:$('cphone').value.trim()});$('cname').value='';$('cphone').value='';save();message('Customer save ho gaya');
 }
-function selectPayment(id){$("paymentCustomer").value=id;document.querySelector('[data-tab="customers"]').click();$("paymentAmount").focus()}
-$("paymentForm").addEventListener("submit",e=>{
-e.preventDefault();let c=db.customers.find(x=>x.id===$("paymentCustomer").value),amount=Number($("paymentAmount").value);if(!c||amount<=0)return msg("Customer aur amount check karein.");
-let due=customerDue(c);if(amount>due)return msg("Amount outstanding udhaar se zyada hai.");
-let remaining=amount;
-for(let s of db.sales.filter(s=>s.customerId===c.id&&s.due>0).sort((a,b)=>a.date.localeCompare(b.date))){let n=Math.min(remaining,s.due);s.due-=n;s.paid+=n;remaining-=n;if(remaining<=0)break}
-db.payments.push({id:uid(),customerId:c.id,amount,date:dateTime()});save();e.target.reset();msg("Payment record ho gayi.");
-});
-$("purchaseForm").addEventListener("submit",e=>{
-e.preventDefault();let m=medicine($("pMedicine").value),qty=Number($("pQty").value),cost=Number($("pCost").value),paid=Number($("pPaid").value);
-if(!m||!Number.isInteger(qty)||qty<1||cost<0||paid<0||paid>qty*cost)return msg("Purchase details check karein.");
-m.qty+=qty;m.cost=cost;if($("pSupplier").value.trim())m.supplier=$("pSupplier").value.trim();
-let p={id:uid(),date:dateTime(),mid:m.id,name:m.name,qty,cost,total:qty*cost,paid,due:qty*cost-paid,supplier:$("pSupplier").value.trim(),invoice:$("pInvoice").value.trim()};
-db.purchases.push(p);addStockMove(m.id,qty,"Purchase",p.invoice);save();e.target.reset();$("pPaid").value=0;msg("Purchase save ho gayi.");
-});
-function renderPurchases(){$("purchaseRows").innerHTML=db.purchases.slice().reverse().map(p=>`<tr><td>${esc(localDate(p.date))}</td><td>${esc(p.invoice)}</td><td>${esc(p.name)}</td><td>${p.qty}</td><td>${money(p.total)}</td><td>${money(p.paid)}</td><td>${money(p.due)}</td></tr>`).join("")||'<tr><td colspan="7">No purchases.</td></tr>'}
-$("expenseForm").addEventListener("submit",e=>{e.preventDefault();db.expenses.push({id:uid(),category:$("eCategory").value.trim(),amount:Number($("eAmount").value),date:$("eDate").value,note:$("eNote").value});save();e.target.reset();$("eDate").value=today();msg("Expense save ho gaya.")});
-function deleteExpense(id){
-  if(confirm("Expense delete karein?")){
-    db.expenses=db.expenses.filter(x=>x.id!==id);
-    save();
+function receive(name){
+ let amount=Number(prompt('Kitni payment receive hui?'));if(!amount||amount<=0)return;
+ let due=db.sales.filter(s=>s.customer===name).reduce((a,s)=>a+s.due,0);
+ if(amount>due)return message('Amount udhaar se zyada hai');
+ for(let s of db.sales.filter(s=>s.customer===name&&s.due>0)){let n=Math.min(amount,s.due);s.due-=n;amount-=n;if(amount<=0)break}
+ save();message('Payment record ho gayi');
+}
+  async function scan(target){
+ scanTarget=target;$('cameraBox').style.display='block';
+ $('cameraStatus').textContent='Camera permission ka intezar…';
+ try{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Website HTTPS par kholein');
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  $('video').srcObject=stream;await $('video').play();
+  if(!('BarcodeDetector' in window)){
+   $('cameraStatus').textContent='Camera open hai, magar browser auto barcode scan support nahi karta. Barcode manually type karein.';return;
   }
+  scanner=new BarcodeDetector();
+  $('cameraStatus').textContent='Barcode camera ke samne rakhein';
+  async function detect(){
+   if(!stream)return;
+   try{
+    let codes=await scanner.detect($('video'));
+    if(codes.length){
+     let code=codes[0].rawValue;closeCamera();
+     if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
+     else{$('mbarcode').value=code;message('Barcode fill ho gaya')}
+     return;
+    }
+   }catch(e){}
+   if(stream)setTimeout(detect,300);
+  }
+  detect();
+ }catch(e){
+  $('cameraStatus').textContent=e.name==='NotAllowedError'?'Chrome settings mein Camera permission allow karein.':e.message||'Camera open nahi hua';
+ }
 }
-?")){db.expenses=db.expenses.filter(x=>x.id!==id);save()}}
-function setReportDates(){if(!$("rFrom").value)$("rFrom").value=today();if(!$("rTo").value)$("rTo").value=today()}
-$("reportForm").addEventListener("submit",e=>{e.preventDefault();renderReport()});
-function renderReport(){
-let from=$("rFrom").value,to=$("rTo").value;if(!from||!to||from>to)return msg("Date range check karein.");
-let sales=db.sales.filter(s=>s.date.slice(0,10)>=from&&s.date.slice(0,10)<=to),expenses=db.expenses.filter(x=>x.date>=from&&x.date<=to).reduce((a,x)=>a+x.amount,0);
-  let total=sales.reduce((a,s)=>a+s.total-s.returned,0),profit=sales.reduce((a,s)=>a+s.profit,0),discount=sales.reduce((a,s)=>a+s.discount,0);
-$("rSales").textContent=money(total);$("rProfit").textContent=money(profit);$("rExpenses").textContent=money(expenses);$("rNet").textContent=money(profit-expenses);$("rDiscount").textContent=money(discount);
-let map={};sales.forEach(s=>s.items.forEach(i=>{if(!map[i.mid])map[i.mid]={name:i.name,qty:0,sales:0,profit:0};map[i.mid].qty+=i.qty;map[i.mid].sales+=i.qty*i.price;map[i.mid].profit+=i.qty*(i.price-i.cost)}));
-$("reportRows").innerHTML=Object.values(map).map(x=>`<tr><td>${esc(x.name)}</td><td>${x.qty}</td><td>${money(x.sales)}</td><td>${money(x.profit)}</td></tr>`).join("")||'<tr><td colspan="4">No sales in this period.</td></tr>';
+function closeCamera(){
+ if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+ $('video').srcObject=null;$('cameraBox').style.display='none';
 }
-function renderDashboard(){
-$("dMeds").textContent=db.medicines.length;$("dStock").textContent=db.medicines.reduce((a,m)=>a+m.qty,0);
-let ss=db.sales.filter(s=>s.date.slice(0,10)===today());
-$("dSales").textContent=money(ss.reduce((a,s)=>a+s.total-s.returned,0));$("dProfit").textContent=money(ss.reduce((a,s)=>a+s.profit,0));
-$("dLow").textContent=db.medicines.filter(m=>m.qty<=m.low).length;
-$("dExpired").textContent=db.medicines.filter(m=>m.expiry&&m.expiry<today()&&m.qty>0).length;
-$("dDebt").textContent=money(db.customers.reduce((a,c)=>a+customerDue(c),0));
-$("dPayable").textContent=money(db.purchases.reduce((a,p)=>a+p.due,0));
-let alerts=db.medicines.filter(m=>m.qty<=m.low||(m.expiry&&m.expiry<=new Date(Date.now()+90*86400000).toISOString().slice(0,10)));
-$
-$("alerts").innerHTML=alerts.map(m=>`<p>${m.expiry&&m.expiry<today()?'🔴 EXPIRED':m.expiry&&m.expiry<=new Date(Date.now()+90*86400000).toISOString().slice(0,10)?'🟠 EXPIRY SOON': '🟡 LOW STOCK'} — <b>${esc(m.name)}</b>: stock ${m.qty}, expiry ${esc(m.expiry||"not entered")}</p>`).join("")||"No alerts.";
-}
-function renderAll(){
-renderMedicines();renderCart();renderSales();renderCustomers();renderPurchases();renderExpenses();renderDashboard();
-$("pMedicine").innerHTML=db.medicines.map(m=>`<option value="${m.id}">${esc(m.name)} (stock ${m.qty})</option>`).join("");
-}
-function exportBackup(){
-let blob=new Blob([JSON.stringify(db,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ZMS-backup-"+today()+".json";a.click();URL.revokeObjectURL(url);msg("Backup download start ho gaya.");
-}
-function importBackup(e){
-let f=e.target.files[0];if(!f)return;let r=new FileReader();
-r.onload=()=>{try{let x=JSON.parse(r.result);if(!x||!Array.isArray(x.medicines)||!Array.isArray(x.sales)||!Array.isArray(x.customers))throw Error();if(!confirm("Current store data replace ho jayega. Pehle current backup kar liya?"))return;db={...initial(),...x};save();msg("Backup restore ho gaya.")}catch(err){msg("Backup file valid nahi hai.")}finally{e.target.value=""}};r.readAsText(f);
-}
-function clearAllData(){if(confirm("WARNING: tamam store data delete hoga. Kya pehle backup liya?")&&confirm("Final confirmation: permanently delete all data?")){localStorage.removeItem(KEY);db=initial();cart=[];save();msg("Store data clear ho gaya.")}}
-$("eDate").value=today();setReportDates();renderAll();renderReport();
-</script>
-  <script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("./sw.js")
-      .catch(function (error) {
-        console.error("Offline setup error:", error);
-      });
-  });
-}
+render();
 </script>
 </body>
 </html>
