@@ -107,7 +107,12 @@ try{db=JSON.parse(localStorage.getItem('zmsData'))||db}catch(e){}
 function save(){localStorage.setItem('zmsData',JSON.stringify(db));render()}
 function money(n){return 'Rs '+Number(n||0).toFixed(2)}
 function message(t){$('msg').textContent=t;$('msg').style.display='block';setTimeout(()=>$('msg').style.display='none',2500)}
-function tab(id){document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));$(id).classList.add('active');render()}
+function tab(id){
+ document.querySelectorAll('main section').forEach(s=>{
+  s.classList.remove('active');
+ });
+ document.getElementById(id).classList.add('active');
+}
 function clearMed(){['mid','mname','mbarcode','mexpiry','mcost','mprice','mqty'].forEach(id=>$(id).value='')}
 function saveMed(){
  let name=$('mname').value.trim();
