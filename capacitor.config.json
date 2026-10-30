@@ -1,0 +1,9 @@
+{
+  "appId": "com.zeemal.healthclinic",
+  "appName": "Zeemal Health Clinic",
+  "webDir": ".",
+  "server": {
+    "url": "https://aryankhan1002.github.io/ZMS/",
+    "cleartext": false
+  }
+}
