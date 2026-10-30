@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Zeemal Health Clinic shield and medical cross logo">
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#047857"/>
+  <g transform="translate(0 0) scale(10.6666667)">
+    <path d="M24 3.5 41 10v12.2c0 10.4-7 18.1-17 22.3C14 40.3 7 32.6 7 22.2V10L24 3.5Z" fill="none" stroke="#ffffff" stroke-width="2.7"/>
+    <path d="M20 12.5h8v7h7v8h-7v7h-8v-7h-7v-8h7z" fill="#ffffff"/>
+  </g>
+</svg>
