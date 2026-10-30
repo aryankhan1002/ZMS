@@ -1,4 +1,3 @@
-
 name: Build Clinic Apps
 
 on:
@@ -7,6 +6,9 @@ on:
     branches:
       - main
       - master
+
+permissions:
+  contents: read
 
 jobs:
   android:
@@ -23,7 +25,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
 
       - name: Create Android project
         run: npx cap add android
@@ -52,7 +54,6 @@ jobs:
   windows:
     name: Build Windows EXE
     runs-on: windows-latest
-    if: always()
 
     steps:
       - name: Get source code
@@ -63,15 +64,79 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
-        run: npm install
+      # The Windows app is built in its own small folder (winapp) so that the
+      # Android/Capacitor packages in the main package.json cannot break it.
+      - name: Prepare Windows app folder
+        shell: bash
+        run: |
+          mkdir -p winapp/electron winapp/build
+          cp electron/main.js winapp/electron/main.js
+          cp index.html winapp/index.html
+          for f in sw.js manifest.json zeemal-health-clinic-logo.png zeemal-health-clinic-logo.svg; do
+            if [ -f "$f" ]; then cp "$f" "winapp/$f"; fi
+          done
+          if [ -f zeemal-health-clinic-logo.png ]; then cp zeemal-health-clinic-logo.png winapp/build/icon.png; fi
+          cat > winapp/package.json <<'EOF'
+          {
+            "name": "zeemal-health-clinic",
+            "version": "1.0.0",
+            "description": "Zeemal Health Clinic Management System",
+            "author": "Zeemal Health Clinic",
+            "main": "electron/main.js",
+            "devDependencies": {
+              "electron": "^40.0.0",
+              "electron-builder": "^26.0.0"
+            },
+            "build": {
+              "appId": "com.zeemal.healthclinic",
+              "productName": "Zeemal Health Clinic",
+              "directories": { "output": "dist" },
+              "files": [
+                "electron/**/*",
+                "index.html",
+                "sw.js",
+                "manifest.json",
+                "zeemal-health-clinic-logo.*",
+                "package.json"
+              ],
+              "win": {
+                "target": ["nsis", "portable"],
+                "icon": "build/icon.png"
+              },
+              "nsis": {
+                "oneClick": false,
+                "allowToChangeInstallationDirectory": true,
+                "createDesktopShortcut": true,
+                "createStartMenuShortcut": true,
+                "artifactName": "Zeemal-Health-Clinic-Setup-${version}.${ext}"
+              },
+              "portable": {
+                "artifactName": "Zeemal-Health-Clinic-Portable-${version}.${ext}"
+              }
+            }
+          }
+          EOF
+          node -e "JSON.parse(require('fs').readFileSync('winapp/package.json','utf8'));console.log('winapp/package.json is valid')"
+          ls -R winapp
+
+      - name: Install Windows build tools
+        working-directory: winapp
+        run: npm install --no-audit --no-fund
 
       - name: Build EXE
-        run: npm run windows:build
+        working-directory: winapp
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --win --publish never
 
-      - name: Upload EXE
+      - name: Show build output
+        shell: bash
+        run: ls -la winapp/dist
+
+      - name: Upload EXE files
         uses: actions/upload-artifact@v4
         with:
           name: Zeemal-Health-Clinic-Windows
-          path: dist/*.exe
+          path: winapp/dist/*.exe
           if-no-files-found: error
+          
