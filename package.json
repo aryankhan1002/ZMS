@@ -1,6 +1,28 @@
+
 {
   "name": "zeemal-health-clinic",
   "version": "1.0.0",
   "description": "Zeemal Health Clinic Management System",
-  "private": true
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "android:sync": "cap sync android",
+    "windows:build": "electron-builder --win"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.zeemal.healthclinic",
+    "productName": "Zeemal Health Clinic",
+    "win": {
+      "target": "nsis"
+    }
+  }
 }
