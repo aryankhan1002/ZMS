@@ -6,5 +6,11 @@
   "server": {
     "url": "https://aryankhan1002.github.io/ZMS/",
     "cleartext": false
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": ["google.com"]
+    }
   }
 }
