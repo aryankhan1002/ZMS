@@ -103,23 +103,26 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
           p = Path("android/app/src/main/AndroidManifest.xml")
           xml = p.read_text()
-          app = re.search(r'<application\\b[^>]*>', xml, re.S)
-          if not app:
+          start = xml.find("<application")
+          if start < 0:
               raise SystemExit("AndroidManifest.xml has no application tag")
-          tag = app.group(0)
-          tag = re.sub(r'\\sandroid:icon="[^"]*"', '', tag)
-          tag = re.sub(r'\\sandroid:roundIcon="[^"]*"', '', tag)
-          tag = tag[:-1] + ' android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round">'
-          xml = xml[:app.start()] + tag + xml[app.end():]
+          end = xml.find(">", start)
+          if end < 0:
+              raise SystemExit("AndroidManifest.xml application tag is incomplete")
+          tag = xml[start:end]
+          import re
+          tag = re.sub(r'\\s+android:icon="[^"]*"', '', tag)
+          tag = re.sub(r'\\s+android:roundIcon="[^"]*"', '', tag)
+          tag += ' android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"'
+          xml = xml[:start] + tag + xml[end:]
           p.write_text(xml)
-          print(tag)
+          print("Launcher icon references set to Zeemal mipmap resources")
           PY
           echo "---- Confirm launcher resources ----"
           find android/app/src/main/res -type f | sort | grep -E 'mipmap.*/ic_launcher'
-          grep -n 'android:icon\\|android:roundIcon' android/app/src/main/AndroidManifest.xml
+          grep -n 'android:icon\|android:roundIcon' android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           test -f android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
