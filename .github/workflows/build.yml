@@ -85,6 +85,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
+      # Prints the real signing fingerprint of the finished APK, so it can be compared with Firebase.
+      - name: Show APK signing fingerprint
+        run: |
+          BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          echo "---- APK certificate (must be SHA-1 93:FA:08:05... = 93fa0805...) ----"
+          "$BT/apksigner" verify --print-certs android/app/build/outputs/apk/debug/app-debug.apk | grep -i "SHA-1\|SHA-256" || true
+          echo "---- Key stored in GitHub secret ----"
+          keytool -list -v -keystore ~/.android/debug.keystore -storepass android 2>/dev/null | grep -i "SHA1\|SHA256" || true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
