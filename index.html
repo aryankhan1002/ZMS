@@ -1096,6 +1096,19 @@ function nativeGoogleLogin(P){
 function googleLogin(){
  if(!fbAuth)return;
  $('loginErr').textContent='';
+ // Windows Electron: Google opens in the normal system browser and returns securely via PKCE.
+ if(window.zeemalDesktopAuth&&typeof window.zeemalDesktopAuth.googleLogin==='function'){
+  window.zeemalDesktopAuth.googleLogin()
+   .then(idToken=>{
+    if(!idToken)throw new Error('Google did not return a sign-in token.');
+    return fbAuth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken));
+   })
+   .catch(e=>{
+    const msg=String((e&&(e.message||e.code))||e);
+    $('loginErr').textContent=/cancel/i.test(msg)?'Google sign-in was cancelled':('Google sign-in failed: '+msg);
+   });
+  return;
+ }
  const isNative=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
  if(isNative){
   const P=nativeAuth();
