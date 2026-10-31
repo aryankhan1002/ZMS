@@ -34,6 +34,7 @@ function startGoogleOAuth() {
     const challenge = base64url(crypto.createHash("sha256").update(verifier).digest());
     const state = base64url(crypto.randomBytes(24));
     let redirectUri = "";
+    let timeout = null;
 
     const server = http.createServer(async (req, res) => {
       const callbackUrl = new URL(req.url, "http://127.0.0.1");
@@ -87,9 +88,17 @@ function startGoogleOAuth() {
     });
 
     function cleanup() {
+      if (timeout) clearTimeout(timeout);
       if (oauthServer === server) oauthServer = null;
       try { server.close(); } catch (_) {}
     }
+
+    oauthServer = server;
+    timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Google sign-in timed out. Please try again."));
+    }, 5 * 60 * 1000);
+    if (typeof timeout.unref === "function") timeout.unref();
 
     server.on("error", error => {
       cleanup();
@@ -99,7 +108,6 @@ function startGoogleOAuth() {
     server.listen(0, "127.0.0.1", async () => {
       const address = server.address();
       redirectUri = `http://127.0.0.1:${address.port}/oauth2callback`;
-      oauthServer = server;
 
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
       authUrl.search = new URLSearchParams({
