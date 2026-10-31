@@ -1,5 +1,5 @@
 // ZMS offline support. Jab app update karein, CACHE ka naam badal dein (zms-v2 -> zms-v3).
-const CACHE='zms-v2';
+const CACHE='zms-v3';
 const CORE=['./','./index.html','./manifest.json'];
 const SDK=[
  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
