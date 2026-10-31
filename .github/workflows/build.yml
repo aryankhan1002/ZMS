@@ -30,6 +30,46 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      # Same signing key on every build, so the SHA-1 saved in Firebase always matches.
+      - name: Install signing key
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "::error::GitHub Secret DEBUG_KEYSTORE_BASE64 is missing. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          mkdir -p ~/.android
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android 2>/dev/null | grep -i "androiddebugkey" || { echo "::error::Signing key is invalid"; exit 1; }
+
+      - name: Add google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::GitHub Secret GOOGLE_SERVICES_JSON is missing. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+          node -e "
+            const j=JSON.parse(require('fs').readFileSync('android/app/google-services.json','utf8'));
+            const c=(j.client||[]).find(x=>x.client_info&&x.client_info.android_client_info.package_name==='com.zeemal.healthclinic');
+            if(!c){console.error('::error::google-services.json is not for package com.zeemal.healthclinic');process.exit(1)}
+            const hashes=((c.oauth_client||[]).map(o=>o.android_info&&o.android_info.certificate_hash).filter(Boolean));
+            console.log('SHA-1 hashes in google-services.json:',hashes.join(', ')||'(none)');
+            if(!hashes.includes('93fa080586bcae98308a6f9aa2c7aa8d3a9ee40e')){console.error('::error::SHA-1 93:FA:08... is missing in google-services.json. Add the fingerprint in Firebase, then download google-services.json again.');process.exit(1)}
+            console.log('google-services.json OK');
+          "
+
+      - name: Enable native Google sign-in and camera
+        run: |
+          sed -i "s/^ext {/ext {\n    rgcfaIncludeGoogle = true\n    androidxCredentialsVersion = '1.3.0'/" android/variables.gradle
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' android/app/src/main/AndroidManifest.xml
+          echo "---- variables.gradle ----"; cat android/variables.gradle
+          echo "---- plugin gradle (google/credentials lines) ----"
+          grep -n -i "rgcfa\|credentials\|googleid\|play-services-auth" node_modules/@capacitor-firebase/authentication/android/build.gradle || true
+
       - name: Sync Android project
         run: npx cap sync android
 
