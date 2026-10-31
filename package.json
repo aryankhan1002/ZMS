@@ -17,7 +17,8 @@
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
     "electron": "^40.0.0",
-    "electron-builder": "^26.0.0"
+    "electron-builder": "^26.0.0",
+    "@capacitor/assets": "^3.0.5"
   },
   "build": {
     "appId": "com.zeemal.healthclinic",
