@@ -139,6 +139,7 @@ jobs:
         run: |
           mkdir -p winapp/electron winapp/build
           cp electron/main.js winapp/electron/main.js
+          cp electron/preload.js winapp/electron/preload.js
           cp index.html winapp/index.html
           for f in sw.js manifest.json zeemal-health-clinic-logo.png zeemal-health-clinic-logo.svg; do
             if [ -f "$f" ]; then cp "$f" "winapp/$f"; fi
