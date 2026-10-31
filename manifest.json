@@ -1,12 +1,11 @@
-
 {
-  "name": "ZMS Medical Store",
-  "short_name": "ZMS",
-  "description": "Medical Store Management System",
+  "name": "Zeemal Health Clinic",
+  "short_name": "Zeemal Clinic",
+  "description": "Zeemal Health Clinic Management System",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#f3f6fa",
-  "theme_color": "#075e66"
+  "orientation": "any",
+  "background_color": "#f3f5fa",
+  "theme_color": "#047857"
 }
