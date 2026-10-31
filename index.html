@@ -1180,6 +1180,38 @@ async function scan(target){
 }
 function closeCamera(){camToken++;stopStream();$('cameraBox').style.display='none'}
 
+/* USB / Bluetooth barcode scanners (keyboard-wedge mode).
+   Scanners type the barcode quickly and finish with Enter. If an input is
+   already focused, its normal Enter handler remains in control. */
+let hardwareScanBuffer='',hardwareScanTimer=null,hardwareScanLast=0;
+document.addEventListener('keydown',e=>{
+ const target=e.target;
+ const editing=target&&(target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+ if(editing)return;
+ if(e.key==='Enter'){
+  const code=hardwareScanBuffer;
+  hardwareScanBuffer='';clearTimeout(hardwareScanTimer);
+  if(code.length>=4){
+   e.preventDefault();
+   if($('bill').classList.contains('on')){
+    $('bsearch').value=code;addBill();
+   }else if($('meds').classList.contains('on')){
+    $('msearch').value=code;renderMeds();
+    const exact=db.meds.filter(m=>String(m.barcode||'').trim()===code);
+    if(exact.length===1)openMed(exact[0].id);
+   }
+  }
+  return;
+ }
+ if(e.key.length!==1||e.ctrlKey||e.altKey||e.metaKey)return;
+ const now=Date.now();
+ if(now-hardwareScanLast>100)hardwareScanBuffer='';
+ hardwareScanLast=now;
+ hardwareScanBuffer+=e.key;
+ clearTimeout(hardwareScanTimer);
+ hardwareScanTimer=setTimeout(()=>{hardwareScanBuffer=''},250);
+});
+
 /* ============================ start ============================ */
 if(CLOUD){setSync('Login required','warn');showLogin('Loading…');initCloud()}
 else setSync('Device-only mode · Firebase setup required','warn');
