@@ -930,7 +930,7 @@ function renderRep(){
  const tile=(l,v,c,sub)=>`<div class="stat ${c||''} static"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||'&nbsp;'}</div></div>`;
  $('repStats').innerHTML=tile('Sales',money(x.sale),'',x.bills+' bills')+tile('Profit',money(x.profit),'ok',x.sale>0?'Margin '+pct(x.profit/x.sale):'')
   +tile('Purchase Cost',money(x.cost),'warn','Discount '+money(x.discount))+tile('Credit Sales',money(x.credit),'bad','in this period')+tile('Payments Received',money(x.wasooli),'ok','payments received')
-  +tile('Average bill',x.bills?money(x.sale/x.bills):'—','','fi bill');
+  +tile('Average bill',x.bills?money(x.sale/x.bills):'—','','per bill');
  const brk=$('repBreak'),chartCard=$('repChartCard');
  if(rep.mode==='day'){
   chartCard.style.display='none';
