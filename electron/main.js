@@ -33,6 +33,7 @@ function startGoogleOAuth() {
     const verifier = base64url(crypto.randomBytes(32));
     const challenge = base64url(crypto.createHash("sha256").update(verifier).digest());
     const state = base64url(crypto.randomBytes(24));
+    let redirectUri = "";
 
     const server = http.createServer(async (req, res) => {
       const callbackUrl = new URL(req.url, "http://127.0.0.1");
@@ -97,7 +98,7 @@ function startGoogleOAuth() {
 
     server.listen(0, "127.0.0.1", async () => {
       const address = server.address();
-      const redirectUri = `http://127.0.0.1:${address.port}/oauth2callback`;
+      redirectUri = `http://127.0.0.1:${address.port}/oauth2callback`;
       oauthServer = server;
 
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
