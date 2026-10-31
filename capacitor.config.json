@@ -1,4 +1,3 @@
-
 {
   "appId": "com.zeemal.healthclinic",
   "appName": "Zeemal Health Clinic",
@@ -9,7 +8,7 @@
   },
   "plugins": {
     "FirebaseAuthentication": {
-      "skipNativeAuth": false,
+      "skipNativeAuth": true,
       "providers": ["google.com"]
     }
   }
