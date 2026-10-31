@@ -99,6 +99,30 @@ jobs:
       - name: Sync Android project
         run: npx cap sync android
 
+      - name: Force Zeemal launcher icon in Android manifest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          xml = p.read_text()
+          app = re.search(r'<application\\b[^>]*>', xml, re.S)
+          if not app:
+              raise SystemExit("AndroidManifest.xml has no application tag")
+          tag = app.group(0)
+          tag = re.sub(r'\\sandroid:icon="[^"]*"', '', tag)
+          tag = re.sub(r'\\sandroid:roundIcon="[^"]*"', '', tag)
+          tag = tag[:-1] + ' android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round">'
+          xml = xml[:app.start()] + tag + xml[app.end():]
+          p.write_text(xml)
+          print(tag)
+          PY
+          echo "---- Confirm launcher resources ----"
+          find android/app/src/main/res -type f | sort | grep -E 'mipmap.*/ic_launcher'
+          grep -n 'android:icon\\|android:roundIcon' android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          test -f android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
