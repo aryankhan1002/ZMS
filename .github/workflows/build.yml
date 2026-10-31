@@ -139,9 +139,13 @@ jobs:
               raise SystemExit("AndroidManifest.xml has no application element")
 
           android_ns = "{http://schemas.android.com/apk/res/android}"
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
           app.set(android_ns + "icon", "@mipmap/ic_launcher")
           app.set(android_ns + "roundIcon", "@mipmap/ic_launcher_round")
           tree.write(p, encoding="utf-8", xml_declaration=True)
+          raw = p.read_text(encoding="utf-8")
+          if 'xmlns:android="http://schemas.android.com/apk/res/android"' not in raw:
+              raise SystemExit("Android namespace declaration missing after manifest update")
 
           # Parse again to verify the generated XML is valid and attributes are unique.
           check = ET.parse(p).getroot().find("application")
