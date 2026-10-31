@@ -1077,9 +1077,36 @@ function authErr(e){
   'auth/network-request-failed':'Check your internet connection','auth/too-many-requests':'Too many attempts. Please try again later'};
  $('loginErr').textContent=m[e.code]||('Error: '+(e.code||e.message));
 }
+function nativeAuth(){
+ // Android app (Capacitor): native Google sign-in plugin. Returns null on website / Windows.
+ try{
+  const C=window.Capacitor;
+  if(!C||!C.isNativePlatform||!C.isNativePlatform())return null;
+  return (C.Plugins&&C.Plugins.FirebaseAuthentication)||(C.registerPlugin&&C.registerPlugin('FirebaseAuthentication'))||null;
+ }catch(e){return null}
+}
+function nativeGoogleLogin(P){
+ // 1) Google account picker (native)  2) sign in to the SAME Firebase JS user with the Google ID token
+ return P.signInWithGoogle().then(r=>{
+  const idToken=r&&r.credential&&r.credential.idToken;
+  if(!idToken)throw {code:'native/no-token',message:'Google did not return a sign-in token'};
+  return fbAuth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken));
+ });
+}
 function googleLogin(){
  if(!fbAuth)return;
  $('loginErr').textContent='';
+ const isNative=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+ if(isNative){
+  const P=nativeAuth();
+  if(!P){$('loginErr').textContent='Google sign-in is not available in this app build. Please use email and password.';return}
+  nativeGoogleLogin(P).catch(e=>{
+   const msg=String((e&&(e.message||e.code))||e);
+   if(/cancel/i.test(msg))$('loginErr').textContent='Google sign-in was cancelled';
+   else authErr(e&&e.code&&String(e.code).indexOf('auth/')===0?e:{code:'',message:msg});
+  });
+  return;
+ }
  const provider=new firebase.auth.GoogleAuthProvider();
  provider.setCustomParameters({prompt:'select_account'});
  fbAuth.signInWithPopup(provider).catch(e=>{
@@ -1098,7 +1125,11 @@ function resetPass(){
 function logout(){
  if(!fbAuth)return;
  const pending=syncTxt.indexOf('Synced')<0;
- if(confirm(pending?'Some data has not synced yet. Logging out may discard unsynced changes. Continue?':'Log out?'))fbAuth.signOut();
+ if(confirm(pending?'Some data has not synced yet. Logging out may discard unsynced changes. Continue?':'Log out?')){
+  const P=nativeAuth();
+  if(P&&P.signOut){try{P.signOut().catch(()=>{})}catch(e){}}
+  fbAuth.signOut();
+ }
 }
 $('lpass').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login()}});
 
