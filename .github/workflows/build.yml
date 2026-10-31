@@ -91,9 +91,35 @@ jobs:
       - name: Enable native Google sign-in and camera
         run: |
           sed -i "s/^ext {/ext {\n    rgcfaIncludeGoogle = true\n    androidxCredentialsVersion = '1.3.0'/" android/variables.gradle
-          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n</manifest>#' android/app/src/main/AndroidManifest.xml
-          echo "---- variables.gradle ----"; cat android/variables.gradle
-          echo "---- plugin gradle (google/credentials lines) ----"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          tree = ET.parse(p)
+          root = tree.getroot()
+          ns = "{http://schemas.android.com/apk/res/android}"
+
+          camera = "http://schemas.android.com/apk/res/android"
+          ET.register_namespace("android", camera)
+
+          # Add camera permission and optional camera feature using proper XML namespace.
+          for tag, attrs in [
+              ("uses-permission", {ns + "name": "android.permission.CAMERA"}),
+              ("uses-feature", {ns + "name": "android.hardware.camera", ns + "required": "false"}),
+          ]:
+              if not any(child.tag == tag and child.get(ns + "name") == attrs[ns + "name"] for child in root):
+                  el = ET.Element(tag, attrs)
+                  app_index = next((i for i, child in enumerate(root) if child.tag == "application"), len(root))
+                  root.insert(app_index, el)
+
+          tree.write(p, encoding="utf-8", xml_declaration=True)
+          ET.parse(p)
+          print("Manifest valid; camera permission added with Android namespace")
+          PY
+          echo "---- variables.gradle ----"
+          cat android/variables.gradle
+          echo "---- plugin Gradle Google/credentials settings ----"
           grep -n -i "rgcfa\|credentials\|googleid\|play-services-auth" node_modules/@capacitor-firebase/authentication/android/build.gradle || true
 
       - name: Sync Android project
