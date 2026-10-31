@@ -778,7 +778,18 @@ function cancelSales(inv){
  s.items.forEach(x=>{const m=db.meds.find(m=>m.id===x.id);if(m)m.qty+=x.qty});
  db.sales=db.sales.filter(x=>x!==s);closeSheet('sBill');closeSheet('sDone');save();message('Bill cancelled.');
 }
-function printHTML(h){$('receipt').innerHTML=h;setTimeout(()=>{try{window.print()}catch(e){message('Printing is not available on this device. Try sharing via WhatsApp.')}},150)}
+async function printHTML(h){
+ $('receipt').innerHTML=h;
+ const cap=window.Capacitor;
+ const nativePrinter=cap&&cap.isNativePlatform&&cap.isNativePlatform()&&cap.Plugins&&cap.Plugins.Printer;
+ if(nativePrinter&&typeof nativePrinter.printHtml==='function'){
+  const storeName=String(S('storeName')||'Zeemal Health Clinic').replace(/[<>]/g,'');
+  const fullHtml='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+storeName+' Receipt</title><style>body{font:13px Arial,sans-serif;color:#000;background:#fff;margin:0;padding:8px}table{width:100%;border-collapse:collapse}td{padding:3px 0}hr{border:0;border-top:1px solid #888}</style></head><body>'+h+'</body></html>';
+  try{await nativePrinter.printHtml({name:storeName+' Receipt',html:fullHtml});return}
+  catch(e){console.error('Native print failed:',e);message('Print service could not open. Please try again or use WhatsApp.');return}
+ }
+ try{window.print()}catch(e){message('Printing is not available on this device. Try sharing via WhatsApp.')}
+}
 function receiptHTML(s){
  const rows=s.items.map(x=>`<tr><td>${esc(x.name)}<br><small>${x.qty} × ${money(x.price)}</small></td><td style="text-align:right;vertical-align:top">${money(x.qty*x.price)}</td></tr>`).join('');
  return `<div style="max-width:320px;margin:0 auto;font:13px Arial,sans-serif"><h2 style="text-align:center;margin:0">${esc(S('storeName'))}</h2>
