@@ -30,6 +30,13 @@ jobs:
       - name: Create Android project
         run: npx cap add android
 
+      - name: Generate Zeemal Android launcher icon
+        run: |
+          mkdir -p assets
+          test -f zeemal-health-clinic-logo.png
+          cp zeemal-health-clinic-logo.png assets/icon-only.png
+          npx capacitor-assets generate --android
+
       # Same signing key on every build, so the SHA-1 saved in Firebase always matches.
       - name: Install signing key
         env:
