@@ -103,26 +103,28 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import xml.etree.ElementTree as ET
+
           p = Path("android/app/src/main/AndroidManifest.xml")
-          xml = p.read_text()
-          start = xml.find("<application")
-          if start < 0:
-              raise SystemExit("AndroidManifest.xml has no application tag")
-          end = xml.find(">", start)
-          if end < 0:
-              raise SystemExit("AndroidManifest.xml application tag is incomplete")
-          tag = xml[start:end]
-          import re
-          tag = re.sub(r'\\s+android:icon="[^"]*"', '', tag)
-          tag = re.sub(r'\\s+android:roundIcon="[^"]*"', '', tag)
-          tag += ' android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round"'
-          xml = xml[:start] + tag + xml[end:]
-          p.write_text(xml)
-          print("Launcher icon references set to Zeemal mipmap resources")
+          tree = ET.parse(p)
+          root = tree.getroot()
+          app = root.find("application")
+          if app is None:
+              raise SystemExit("AndroidManifest.xml has no application element")
+
+          android_ns = "{http://schemas.android.com/apk/res/android}"
+          app.set(android_ns + "icon", "@mipmap/ic_launcher")
+          app.set(android_ns + "roundIcon", "@mipmap/ic_launcher_round")
+          tree.write(p, encoding="utf-8", xml_declaration=True)
+
+          # Parse again to verify the generated XML is valid and attributes are unique.
+          check = ET.parse(p).getroot().find("application")
+          assert check.get(android_ns + "icon") == "@mipmap/ic_launcher"
+          assert check.get(android_ns + "roundIcon") == "@mipmap/ic_launcher_round"
+          print("Valid manifest: Zeemal launcher icons configured")
           PY
           echo "---- Confirm launcher resources ----"
           find android/app/src/main/res -type f | sort | grep -E 'mipmap.*/ic_launcher'
-          grep -n 'android:icon\|android:roundIcon' android/app/src/main/AndroidManifest.xml
           test -f android/app/src/main/res/mipmap-hdpi/ic_launcher.png
           test -f android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
 
