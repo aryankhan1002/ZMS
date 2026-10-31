@@ -188,4 +188,3 @@ jobs:
           name: Zeemal-Health-Clinic-Windows
           path: winapp/dist/*.exe
           if-no-files-found: error
-          
