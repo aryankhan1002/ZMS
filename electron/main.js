@@ -8,8 +8,8 @@ const ICON = path.join(__dirname, "..", "zeemal-health-clinic-logo.png");
 const GOOGLE_DESKTOP_CLIENT_ID = "84919046289-53hd5vsphcehv9u20q8ouiogki1fnn6a.apps.googleusercontent.com";
 
 app.userAgentFallback = app.userAgentFallback
-  .replace(/\\sElectron\\/[\\d.]+/i, "")
-  .replace(/\\s[^\\s/]+\\/[\\d.]+(?=\\sChrome\\/)/, "");
+  .replace(/\sElectron\/[\d.]+/i, "")
+  .replace(/\s[^\s/]+\/[\d.]+(?=\sChrome\/)/, "");
 
 let win = null;
 let oauthServer = null;
@@ -20,7 +20,7 @@ function loadLocalCopy() {
 }
 
 function base64url(buffer) {
-  return buffer.toString("base64").replace(/=/g, "").replace(/\\+/g, "-").replace(/\\//g, "_");
+  return buffer.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 function startGoogleOAuth() {
