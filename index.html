@@ -1116,9 +1116,10 @@ function logout(){
  if(!fbAuth)return;
  const pending=syncTxt.indexOf('Synced')<0;
  if(confirm(pending?'Some data has not synced yet. Logging out may discard unsynced changes. Continue?':'Log out?')){
-  const P=nativeAuth();
-  if(P&&P.signOut){try{P.signOut().catch(()=>{})}catch(e){}}
-  fbAuth.signOut();
+  fbAuth.signOut().catch(e=>{
+   $('loginErr').textContent='Logout failed. Please check your internet connection and try again.';
+   message('Logout error: '+(e.code||e.message));
+  });
  }
 }
 $('lpass').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login()}});
