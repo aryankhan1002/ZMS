@@ -1064,6 +1064,7 @@ function startCloud(user){
   $('loginErr').textContent='This account is not authorized. Contact the administrator.';
   fbAuth.signOut();return;
  }
+ fbUser=user;
  accountAccess=access;
  activeStoreId=access.role==='admin'?(activeStoreId||'store1'):access.stores[0];
  $('storeSwitchWrap').style.display=access.role==='admin'?'block':'none';
