@@ -1,0 +1,24 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() && request.auth.uid == 'Cvmss8Sj7YfOoeiijVtBNRUvm4r2';
+    }
+    function canAccessStore(storeId) {
+      return isAdmin()
+        || (storeId == 'store1' && signedIn() && request.auth.uid == 'N7dGztExhSbi9ROpzOShW4QnRgg2')
+        || (storeId == 'store2' && signedIn() && request.auth.uid == 'L7HLgXwZHnSfdF8V6gek9RYxPsh2');
+    }
+    match /stores/{storeId}/data/{documentId} {
+      allow read, write: if canAccessStore(storeId);
+    }
+    // Legacy per-user test data is intentionally inaccessible to the new app.
+    match /users/{userId}/data/{documentId} {
+      allow read, write: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
