@@ -191,6 +191,7 @@ const FIREBASE_CONFIG={
   <button class="iconbtn" type="button" onclick="openSettings()" aria-label="Settings"><svg viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg></button>
  </div>
  <div class="pill" id="syncPill"></div>
+ <div id="storeSwitchWrap" style="display:none;margin-top:9px;max-width:260px"><label for="storeSwitch" style="font-size:12px;color:#fff;font-weight:700">Active store</label><select id="storeSwitch" onchange="switchStore(this.value)" style="margin-top:4px;padding:8px 10px;border-radius:10px"><option value="store1">Store 1</option><option value="store2">Store 2</option></select></div>
 </header>
 
 <main>
@@ -405,17 +406,10 @@ const FIREBASE_CONFIG={
   <div class="brand-mark" style="width:44px;height:44px;flex:none"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 3.5 41 10v12.2c0 10.4-7 18.1-17 22.3C14 40.3 7 32.6 7 22.2V10L24 3.5Z" fill="none" stroke="currentColor" stroke-width="2.7"/><path d="M20 12.5h8v7h7v8h-7v7h-8v-7h-7v-8h7z" fill="currentColor"/></svg></div>
   <div><h2 style="margin:0 0 2px">Zeemal Health Clinic</h2><div class="s">Secure Cloud Account</div></div>
  </div>
- <p id="loginInfo" class="muted" style="margin:0 0 6px">Sign in to access your store data on any device.</p>
- <button class="btn block big" type="button" onclick="googleLogin()" style="background:#fff;color:#1f2937;border:1px solid var(--line);margin:8px 0 12px">
-  <svg viewBox="0 0 48 48" width="19" height="19" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.5 30.3 0 24 0 14.7 0 6.7 5.3 2.7 13l7.8 6.1C12.4 13.1 17.7 9.5 24 9.5Z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.2-3.1-.5-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.7 6.9l7.6 5.9c4.4-4.1 6.8-10.1 6.8-17.3Z"/><path fill="#FBBC05" d="M10.5 28.9A14.5 14.5 0 0 1 9.7 24c0-1.7.3-3.4.8-4.9L2.7 13a24 24 0 0 0 0 22l7.8-6.1Z"/><path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.4-6.2l-7.6-5.9c-2.1 1.4-4.7 2.2-7.8 2.2-6.3 0-11.6-3.6-13.5-8.9l-7.8 6.1C6.7 42.7 14.7 48 24 48Z"/></svg>
-  Continue with Google
- </button>
- <div class="s" style="text-align:center;margin-bottom:4px">OR SIGN IN WITH EMAIL</div>
- <label class="lbl">Email</label><input id="lemail" type="email" autocomplete="username">
- <label class="lbl">Password</label><input id="lpass" type="password" autocomplete="current-password">
+ <p id="loginInfo" class="muted" style="margin:0 0 6px">Enter your assigned User ID and password.</p>
+ <label class="lbl">User ID</label><input id="lemail" type="text" autocomplete="username" autocapitalize="none" placeholder="Enter User ID">
+ <label class="lbl">Password</label><input id="lpass" type="password" autocomplete="current-password" placeholder="Enter password">
  <button class="btn block big" type="button" onclick="login()">Login</button>
- <button class="btn ghost block" type="button" style="margin-top:8px" onclick="signup()">Create Account</button>
- <p style="margin:12px 0 0"><a href="#" onclick="resetPass();return false">Forgot password?</a></p>
  <p id="loginErr" class="bad" style="margin:8px 0 0"></p>
 </div></div>
 <div id="msg"></div>
@@ -959,7 +953,7 @@ function renderRep(){
 function openSettings(){
  $('setName').value=db.settings.storeName||'';$('setPhone').value=db.settings.phone||'';$('setAddr').value=db.settings.address||'';
  $('setLow').value=db.settings.lowQty==null?'':db.settings.lowQty;$('setExp').value=db.settings.expDays==null?'':db.settings.expDays;
- $('setAcct').innerHTML=CLOUD?(fbUser?'<div class="s" style="margin-bottom:6px">Login: <b>'+esc(fbUser.email)+'</b></div><button class="btn red block" type="button" onclick="logout()">Logout</button>':''):'<div class="card" style="background:var(--warnbg);box-shadow:none"><b>Cloud Sync Disabled</b><div class="s">Data is currently stored on this device only. Add your Firebase web configuration and enable Authentication and Firestore to turn on secure cloud sync.</div></div>';
+ $('setAcct').innerHTML=CLOUD?(fbUser?'<div class="s" style="margin-bottom:6px">Login: <b>'+esc(accountAccess&&accountAccess.role==='admin'?'Admin':activeStoreId==='store1'?'Store 1':'Store 2')+'</b></div><button class="btn red block" type="button" onclick="logout()">Logout</button>':''):'<div class="card" style="background:var(--warnbg);box-shadow:none"><b>Cloud Sync Disabled</b><div class="s">Data is currently stored on this device only. Add your Firebase web configuration and enable Authentication and Firestore to turn on secure cloud sync.</div></div>';
  openSheet('sSettings');
 }
 function saveSettings(){
@@ -997,8 +991,13 @@ function bkRestore(){
 }
 
 /* ============================ CLOUD (Firebase login + sync) ============================ */
-let fbAuth=null,fbDb=null,fbUser=null,unsub=null,docCache={},cloudReady=false,serverSnapshotReady=false,syncTxt='';
-function setSync(t,cls){syncTxt=t;const p=$('syncPill');p.className='pill '+(cls||'');p.textContent=(fbUser?fbUser.email+' · ':'')+t}
+const ACCOUNT_ACCESS={
+ 'Cvmss8Sj7YfOoeiijVtBNRUvm4r2':{role:'admin',stores:['store1','store2'],email:'zeemaladmin@zeemal.local'},
+ 'N7dGztExhSbi9ROpzOShW4QnRgg2':{role:'store',stores:['store1'],email:'store01@zeemal.local'},
+ 'L7HLgXwZHnSfdF8V6gek9RYxPsh2':{role:'store',stores:['store2'],email:'store02@zeemal.local'}
+};
+let fbAuth=null,fbDb=null,fbUser=null,unsub=null,docCache={},cloudReady=false,serverSnapshotReady=false,syncTxt='',activeStoreId='store1',accountAccess=null;
+function setSync(t,cls){syncTxt=t;const p=$('syncPill');p.className='pill '+(cls||'');p.textContent=(fbUser?(accountAccess&&accountAccess.role==='admin'?'Admin · ':'Store · '):'')+t}
 function showLogin(t){$('loginInfo').textContent=t;$('login').style.display='flex'}
 function buildDocs(){
  const docs={main:JSON.stringify({meds:db.meds,customers:db.customers,settings:db.settings})},by={};
@@ -1009,7 +1008,7 @@ function buildDocs(){
 }
 function cloudPush(){
  if(!fbUser||!fbDb||!cloudReady)return;
- const docs=buildDocs(),col=fbDb.collection('users').doc(fbUser.uid).collection('data');
+ const docs=buildDocs(),col=fbDb.collection('stores').doc(activeStoreId).collection('data');
  Object.keys(docs).forEach(k=>{
   if(docCache[k]===docs[k])return;
   docCache[k]=docs[k];
@@ -1043,33 +1042,44 @@ function rebuildDb(){
  nd.sales=[...sales.values()];nd.payments=[...pays.values()];
  db=nd;normalize();
 }
-function startCloud(user){
+function loadActiveStore(){
  if(unsub){unsub();unsub=null}
- fbUser=user;docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
- $('login').style.display='none';$('lpass').value='';$('loginErr').textContent='';$('loading').style.display='flex';
- setSync('Loading…');render();
- unsub=fbDb.collection('users').doc(user.uid).collection('data').onSnapshot(snap=>{
+ docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
+ $('loading').style.display='flex';setSync('Loading '+(activeStoreId==='store1'?'Store 1':'Store 2')+'…');render();
+ unsub=fbDb.collection('stores').doc(activeStoreId).collection('data').onSnapshot(snap=>{
   const changed=applySnapshot(snap);
   if(!snap.metadata.fromCache)serverSnapshotReady=true;
   if(!cloudReady&&(!snap.metadata.fromCache||!snap.empty)){
    cloudReady=true;$('loading').style.display='none';
-   if(snap.empty){
-    const old=readLegacy();
-    if(old&&(arr(old.meds).length||arr(old.customers).length||arr(old.sales).length)&&confirm('Existing data was found on this device. Import it into this account?')){
-     db=old;normalize();cloudPush();render();return;
-    }
-   }
   }
   if(changed)rebuildDb();
   render();
   if(snap.metadata.fromCache)setSync(navigator.onLine===false?'Offline copy':'Loading…',navigator.onLine===false?'warn':'');
   else if(!snap.metadata.hasPendingWrites)setSync('✔ Synced');
- },err=>{setSync('⚠ Sync error','warn');message('Cloud error: '+(err.code||err.message))});
+ },err=>{cloudReady=false;$('loading').style.display='none';setSync('⚠ Sync error','warn');message('Cloud error: '+(err.code||err.message))});
+}
+function startCloud(user){
+ const access=ACCOUNT_ACCESS[user.uid];
+ if(!access){
+  $('loginErr').textContent='This account is not authorized. Contact the administrator.';
+  fbAuth.signOut();return;
+ }
+ accountAccess=access;
+ activeStoreId=access.role==='admin'?(activeStoreId||'store1'):access.stores[0];
+ $('storeSwitchWrap').style.display=access.role==='admin'?'block':'none';
+ $('storeSwitch').value=activeStoreId;
+ $('login').style.display='none';$('lpass').value='';$('loginErr').textContent='';
+ loadActiveStore();
+}
+function switchStore(storeId){
+ if(!accountAccess||accountAccess.role!=='admin'||!accountAccess.stores.includes(storeId))return;
+ if(storeId===activeStoreId)return;
+ activeStoreId=storeId;$('storeSwitch').value=storeId;loadActiveStore();
 }
 function stopCloud(){
  if(unsub){unsub();unsub=null}
- fbUser=null;docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
- $('loading').style.display='none';closeSheet('sSettings');
+ fbUser=null;accountAccess=null;docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
+ $('storeSwitchWrap').style.display='none';$('loading').style.display='none';closeSheet('sSettings');
  setSync('Login required','warn');render();showLogin('Log in to your account.');
 }
 function initCloud(){
@@ -1088,63 +1098,18 @@ function authErr(e){
   'auth/network-request-failed':'Check your internet connection','auth/too-many-requests':'Too many attempts. Please try again later'};
  $('loginErr').textContent=m[e.code]||('Error: '+(e.code||e.message));
 }
-function nativeAuth(){
- // Android app (Capacitor): native Google sign-in plugin. Returns null on website / Windows.
- try{
-  const C=window.Capacitor;
-  if(!C||!C.isNativePlatform||!C.isNativePlatform())return null;
-  return (C.Plugins&&C.Plugins.FirebaseAuthentication)||(C.registerPlugin&&C.registerPlugin('FirebaseAuthentication'))||null;
- }catch(e){return null}
-}
-function nativeGoogleLogin(P){
- // 1) Google account picker (native)  2) sign in to the SAME Firebase JS user with the Google ID token
- return P.signInWithGoogle().then(r=>{
-  const idToken=r&&r.credential&&r.credential.idToken;
-  if(!idToken)throw {code:'native/no-token',message:'Google did not return a sign-in token'};
-  return fbAuth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken));
- });
-}
-function googleLogin(){
+function login(){
  if(!fbAuth)return;
  $('loginErr').textContent='';
- // Windows Electron: Google opens in the normal system browser and returns securely via PKCE.
- if(window.zeemalDesktopAuth&&typeof window.zeemalDesktopAuth.googleLogin==='function'){
-  window.zeemalDesktopAuth.googleLogin()
-   .then(idToken=>{
-    if(!idToken)throw new Error('Google did not return a sign-in token.');
-    return fbAuth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(idToken));
-   })
-   .catch(e=>{
-    const msg=String((e&&(e.message||e.code))||e);
-    $('loginErr').textContent=/cancel/i.test(msg)?'Google sign-in was cancelled':('Google sign-in failed: '+msg);
-   });
-  return;
- }
- const isNative=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
- if(isNative){
-  const P=nativeAuth();
-  if(!P){$('loginErr').textContent='Google sign-in is not available in this app build. Please use email and password.';return}
-  nativeGoogleLogin(P).catch(e=>{
-   const msg=String((e&&(e.message||e.code))||e);
-   if(/cancel/i.test(msg))$('loginErr').textContent='Google sign-in was cancelled';
-   else authErr(e&&e.code&&String(e.code).indexOf('auth/')===0?e:{code:'',message:msg});
-  });
-  return;
- }
- const provider=new firebase.auth.GoogleAuthProvider();
- provider.setCustomParameters({prompt:'select_account'});
- fbAuth.signInWithPopup(provider).catch(e=>{
-  if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){
-   fbAuth.signInWithRedirect(provider).catch(authErr);
-  }else authErr(e);
+ const id=$('lemail').value.trim().toLowerCase();
+ const aliases={zeemaladmin:'zeemaladmin@zeemal.local',store01:'store01@zeemal.local',store02:'store02@zeemal.local'};
+ const email=aliases[id];
+ if(!email){$('loginErr').textContent='Invalid User ID or password.';return}
+ const password=$('lpass').value;
+ if(!password){$('loginErr').textContent='Enter your password.';return}
+ fbAuth.signInWithEmailAndPassword(email,password).catch(e=>{
+  $('loginErr').textContent=(e.code==='auth/network-request-failed')?'Check your internet connection.':'Invalid User ID or password.';
  });
-}
-function login(){if(!fbAuth)return;$('loginErr').textContent='';fbAuth.signInWithEmailAndPassword($('lemail').value.trim(),$('lpass').value).catch(authErr)}
-function signup(){if(!fbAuth)return;$('loginErr').textContent='';fbAuth.createUserWithEmailAndPassword($('lemail').value.trim(),$('lpass').value).catch(authErr)}
-function resetPass(){
- if(!fbAuth)return;const e=$('lemail').value.trim();
- if(!e){$('loginErr').textContent='Enter your email address first';return}
- fbAuth.sendPasswordResetEmail(e).then(()=>{$('loginErr').textContent='Password reset email sent. Check your spam folder too.'}).catch(authErr);
 }
 function logout(){
  if(!fbAuth)return;
@@ -1156,6 +1121,7 @@ function logout(){
  }
 }
 $('lpass').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();login()}});
+$('lemail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('lpass').focus()}});
 
 /* ============================ CAMERA / BARCODE ============================ */
 function stopStream(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null}
