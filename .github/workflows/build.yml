@@ -34,8 +34,10 @@ jobs:
       - name: Generate Zeemal Android launcher icon
         run: |
           mkdir -p assets
-          test -f zeemal-health-clinic-logo.png
-          cp zeemal-health-clinic-logo.png assets/icon.png
+          test -f zeemal-android-icon.svg
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          convert -background none zeemal-android-icon.svg -resize 1024x1024 assets/icon.png
           npx capacitor-assets generate --android
 
       # Same signing key on every build, so the SHA-1 saved in Firebase always matches.
