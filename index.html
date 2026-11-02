@@ -1027,7 +1027,10 @@ function cloudPush(){
  // Delay destructive deletes until a server-backed snapshot confirms the full remote collection.
  if(serverSnapshotReady)Object.keys(docCache).forEach(k=>{if(!(k in docs)&&/^(sales|pay)_/.test(k)){delete docCache[k];col.doc(k).delete().catch(e=>{setSync('⚠ Delete sync error','warn');message('Cloud delete error: '+(e.code||e.message))})}});
  setSync(navigator.onLine===false?'Offline (will sync when connected)':'Syncing…');
- fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{if(!navigator.onLine)setSync('Offline · changes will sync','warn')});
+ fbDb.waitForPendingWrites().then(()=>{
+  setSync('✔ Synced');
+  if(fbUser){try{localStorage.setItem('zeemalOffline_'+fbUser.uid+'_'+activeStoreId,JSON.stringify(db))}catch(e){console.warn('Offline cache update unavailable',e)}}
+ }).catch(()=>{if(!navigator.onLine)setSync('Offline · changes will sync','warn')});
 }
 function applySnapshot(snap){
  let changed=false;
@@ -1068,7 +1071,11 @@ function loadActiveStore(){
   if(!cloudReady&&(!snap.metadata.fromCache||!snap.empty)){
    cloudReady=true;$('loading').style.display='none';
   }
-  if(changed)rebuildDb();
+  // Rebuild on the first clean server snapshot too (including an empty store), so stale local data cannot override cloud data.
+  if(changed||(!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites))rebuildDb();
+  if(!snap.metadata.fromCache&&!snap.metadata.hasPendingWrites&&fbUser){
+   try{localStorage.setItem('zeemalOffline_'+fbUser.uid+'_'+activeStoreId,JSON.stringify(db))}catch(e){console.warn('Offline snapshot cache unavailable',e)}
+  }
   render();
   if(snap.metadata.fromCache)setSync(navigator.onLine===false?'Offline copy':'Loading…',navigator.onLine===false?'warn':'');
   else if(!snap.metadata.hasPendingWrites)setSync('✔ Synced');
