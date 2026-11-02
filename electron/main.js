@@ -165,7 +165,8 @@ function createWindow() {
     return { action: "deny" };
   });
 
-  win.loadURL(APP_URL).catch(() => loadLocalCopy());
+  // Always use the bundled app so a temporary internet outage cannot send the app to a browser page.
+  loadLocalCopy();
   win.on("closed", () => {
     win = null;
   });
