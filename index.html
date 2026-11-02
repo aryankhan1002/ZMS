@@ -12,8 +12,8 @@
 <style>
 :root{--bg:#f3f5fa;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e4e8f1;--pri:#059669;--pri2:#065f46;--soft:#e6f7f0;--ok:#059669;--okbg:#e6f7f0;--bad:#dc2626;--badbg:#fdecec;--warn:#b45309;--warnbg:#fff3dc;--r:14px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;font:15px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+html{-webkit-text-size-adjust:100%;width:100%;overflow-x:hidden}
+body{margin:0;font:15px/1.45 -apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:calc(92px + env(safe-area-inset-bottom));width:100%;max-width:100%;overflow-x:hidden}
 button{font:inherit;cursor:pointer}
 h2,h3{margin:0}
 .muted,.s{font-size:12.5px;color:var(--muted)}
@@ -53,7 +53,9 @@ main{max-width:980px;margin:0 auto;padding:14px}
 .btn.sm{padding:7px 11px;font-size:13px;border-radius:9px}
 .btn.block{width:100%}
 .btn.big{padding:14px;font-size:16px;margin-top:10px}
-input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:11px;font:inherit;background:#fff;color:var(--ink);outline:none}
+input,select,textarea{width:100%;min-width:0;padding:11px 12px;border:1px solid var(--line);border-radius:11px;font:inherit;font-size:16px;background:#fff;color:var(--ink);outline:none;max-width:100%}
+/* Prevent mobile browser auto-zoom when focusing barcode/search fields. */
+#bsearch,#mbarcode,#msearch{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 input:focus,select:focus,textarea:focus{border-color:var(--pri);box-shadow:0 0 0 3px rgba(5,150,105,.15)}
 .lbl{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:11px 0 4px}
 .row{display:flex;gap:8px;align-items:stretch}
@@ -482,8 +484,11 @@ normalize();
 
 function canWrite(){if(CLOUD&&!cloudReady){message('Data is loading. Please wait…');return false}return true}
 function save(){
- if(CLOUD)cloudPush();
- else try{localStorage.setItem('zmsData',JSON.stringify(db))}catch(e){message('Could not save data. Storage may be full or disabled.')}
+ if(CLOUD){
+  // Local recovery copy for this account/store during network interruptions.
+  if(fbUser){try{localStorage.setItem('zeemalOffline_'+fbUser.uid+'_'+activeStoreId,JSON.stringify(db))}catch(e){console.warn('Offline cache storage unavailable',e)}}
+  cloudPush();
+ }else try{localStorage.setItem('zmsData',JSON.stringify(db))}catch(e){message('Could not save data. Storage may be full or disabled.')}
  render();
 }
 function message(t){
@@ -924,9 +929,12 @@ function renderRep(){
  $('repDate').value=ymd(rep.anchor);
  const x=summ(A,B);
  const tile=(l,v,c,sub)=>`<div class="stat ${c||''} static"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||'&nbsp;'}</div></div>`;
+ const stockCost=r2(db.meds.reduce((a,m)=>a+m.cost*m.qty,0));
+ const stockUnits=db.meds.reduce((a,m)=>a+m.qty,0);
  $('repStats').innerHTML=tile('Sales',money(x.sale),'',x.bills+' bills')+tile('Profit',money(x.profit),'ok',x.sale>0?'Margin '+pct(x.profit/x.sale):'')
   +tile('Purchase Cost',money(x.cost),'warn','Discount '+money(x.discount))+tile('Credit Sales',money(x.credit),'bad','in this period')+tile('Payments Received',money(x.wasooli),'ok','payments received')
-  +tile('Average bill',x.bills?money(x.sale/x.bills):'—','','per bill');
+  +tile('Average bill',x.bills?money(x.sale/x.bills):'—','','per bill')
+  +tile('Current Stock Purchase Value',money(stockCost),'warn',db.meds.length+' medicines · '+stockUnits+' units');
  const brk=$('repBreak'),chartCard=$('repChartCard');
  if(rep.mode==='day'){
   chartCard.style.display='none';
@@ -1019,7 +1027,7 @@ function cloudPush(){
  // Delay destructive deletes until a server-backed snapshot confirms the full remote collection.
  if(serverSnapshotReady)Object.keys(docCache).forEach(k=>{if(!(k in docs)&&/^(sales|pay)_/.test(k)){delete docCache[k];col.doc(k).delete().catch(e=>{setSync('⚠ Delete sync error','warn');message('Cloud delete error: '+(e.code||e.message))})}});
  setSync(navigator.onLine===false?'Offline (will sync when connected)':'Syncing…');
- fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{});
+ fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{if(!navigator.onLine)setSync('Offline · changes will sync','warn')});
 }
 function applySnapshot(snap){
  let changed=false;
@@ -1047,7 +1055,13 @@ function rebuildDb(){
 function loadActiveStore(){
  if(unsub){unsub();unsub=null}
  docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
- $('loading').style.display='flex';setSync('Loading '+(activeStoreId==='store1'?'Store 1':'Store 2')+'…');render();
+ // Display a local copy immediately if the device is offline.
+ try{
+  const cached=localStorage.getItem('zeemalOffline_'+fbUser.uid+'_'+activeStoreId);
+  if(cached){const parsed=JSON.parse(cached);if(parsed&&typeof parsed==='object'){db=parsed;normalize();if(navigator.onLine===false)cloudReady=true}}
+ }catch(e){console.warn('Offline data cache could not be loaded',e)}
+ $('loading').style.display=navigator.onLine===false&&cloudReady?'none':'flex';
+ setSync(navigator.onLine===false&&cloudReady?'Offline · local data available':'Loading '+(activeStoreId==='store1'?'Store 1':'Store 2')+'…',navigator.onLine===false?'warn':'');render();
  unsub=fbDb.collection('stores').doc(activeStoreId).collection('data').onSnapshot(snap=>{
   const changed=applySnapshot(snap);
   if(!snap.metadata.fromCache)serverSnapshotReady=true;
@@ -1058,7 +1072,14 @@ function loadActiveStore(){
   render();
   if(snap.metadata.fromCache)setSync(navigator.onLine===false?'Offline copy':'Loading…',navigator.onLine===false?'warn':'');
   else if(!snap.metadata.hasPendingWrites)setSync('✔ Synced');
- },err=>{cloudReady=false;$('loading').style.display='none';setSync('⚠ Sync error','warn');message('Cloud error: '+(err.code||err.message))});
+ },err=>{
+  // Network errors should never sign the user out or discard the cached view.
+  if(fbUser&&(!navigator.onLine||/unavailable|deadline-exceeded|network/i.test(String(err.code||err.message)))){
+   if(db&&(db.meds.length||db.sales.length||db.customers.length||db.payments.length))cloudReady=true;
+   $('loading').style.display='none';setSync('Offline · saved data available','warn');return;
+  }
+  $('loading').style.display='none';setSync('⚠ Sync error','warn');message('Cloud error: '+(err.code||err.message));
+ });
 }
 function startCloud(user){
  const access=ACCOUNT_ACCESS[user.uid];
@@ -1089,8 +1110,11 @@ function initCloud(){
  if(typeof firebase==='undefined'){showLogin('The login system did not load. Turn on the internet and refresh the page.');return}
  firebase.initializeApp(FIREBASE_CONFIG);
  fbAuth=firebase.auth();fbDb=firebase.firestore();
- fbDb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
- fbAuth.onAuthStateChanged(u=>{if(u)startCloud(u);else stopCloud()});
+ fbDb.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('Firestore offline persistence unavailable:',e.code||e.message));
+ // Explicitly keep the signed-in account stored on this device across outages/restarts.
+ fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(e=>console.warn('Auth local persistence unavailable:',e.code||e.message)).finally(()=>{
+  fbAuth.onAuthStateChanged(u=>{if(u)startCloud(u);else stopCloud()});
+ });
  window.addEventListener('offline',()=>{if(fbUser)setSync('Offline (will sync when connected)','warn')});
  window.addEventListener('online',()=>{if(fbUser){setSync('Syncing…');fbDb.waitForPendingWrites().then(()=>setSync('✔ Synced')).catch(()=>{})}});
 }
