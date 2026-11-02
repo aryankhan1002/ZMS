@@ -28,6 +28,16 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Prepare bundled app files for offline-first Android
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+          for f in manifest.json sw.js zeemal-health-clinic-logo.png zeemal-health-clinic-logo.svg; do
+            if [ -f "$f" ]; then cp "$f" "www/$f"; fi
+          done
+          test -s www/index.html
+          echo "Android will use bundled clinic files instead of GitHub Pages."
+
       - name: Create Android project
         run: npx cap add android
 
