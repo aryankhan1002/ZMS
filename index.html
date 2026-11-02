@@ -1006,7 +1006,7 @@ const ACCOUNT_ACCESS={
  'N7dGztExhSbi9ROpzOShW4QnRgg2':{role:'store',stores:['store1'],email:'store01@zeemal.local'},
  'L7HLgXwZHnSfdF8V6gek9RYxPsh2':{role:'store',stores:['store2'],email:'store02@zeemal.local'}
 };
-let fbAuth=null,fbDb=null,fbUser=null,unsub=null,docCache={},cloudReady=false,serverSnapshotReady=false,syncTxt='',activeStoreId='store1',accountAccess=null;
+let fbAuth=null,fbDb=null,fbUser=null,unsub=null,docCache={},cloudReady=false,serverSnapshotReady=false,localCacheLoaded=false,syncTxt='',activeStoreId='store1',accountAccess=null;
 function setSync(t,cls){syncTxt=t;const p=$('syncPill');p.className='pill '+(cls||'');p.textContent=(fbUser?(accountAccess&&accountAccess.role==='admin'?'Admin · ':'Store · '):'')+t}
 function showLogin(t){$('loginInfo').textContent=t;$('login').style.display='flex'}
 function buildDocs(){
@@ -1057,18 +1057,18 @@ function rebuildDb(){
 }
 function loadActiveStore(){
  if(unsub){unsub();unsub=null}
- docCache={};cloudReady=false;serverSnapshotReady=false;db=emptyDb();cart=[];
+ docCache={};cloudReady=false;serverSnapshotReady=false;localCacheLoaded=false;db=emptyDb();cart=[];
  // Display a local copy immediately if the device is offline.
  try{
   const cached=localStorage.getItem('zeemalOffline_'+fbUser.uid+'_'+activeStoreId);
-  if(cached){const parsed=JSON.parse(cached);if(parsed&&typeof parsed==='object'){db=parsed;normalize();if(navigator.onLine===false)cloudReady=true}}
+  if(cached){const parsed=JSON.parse(cached);if(parsed&&typeof parsed==='object'){db=parsed;normalize();localCacheLoaded=true;if(navigator.onLine===false)cloudReady=true}}
  }catch(e){console.warn('Offline data cache could not be loaded',e)}
  $('loading').style.display=navigator.onLine===false&&cloudReady?'none':'flex';
  setSync(navigator.onLine===false&&cloudReady?'Offline · local data available':'Loading '+(activeStoreId==='store1'?'Store 1':'Store 2')+'…',navigator.onLine===false?'warn':'');render();
  unsub=fbDb.collection('stores').doc(activeStoreId).collection('data').onSnapshot(snap=>{
   const changed=applySnapshot(snap);
   if(!snap.metadata.fromCache)serverSnapshotReady=true;
-  if(!cloudReady&&(!snap.metadata.fromCache||!snap.empty)){
+  if(!cloudReady&&(!snap.metadata.fromCache||!snap.empty||navigator.onLine===false)){
    cloudReady=true;$('loading').style.display='none';
   }
   // Rebuild on the first clean server snapshot too (including an empty store), so stale local data cannot override cloud data.
@@ -1082,7 +1082,7 @@ function loadActiveStore(){
  },err=>{
   // Network errors should never sign the user out or discard the cached view.
   if(fbUser&&(!navigator.onLine||/unavailable|deadline-exceeded|network/i.test(String(err.code||err.message)))){
-   if(db&&(db.meds.length||db.sales.length||db.customers.length||db.payments.length))cloudReady=true;
+   if(localCacheLoaded||db&&(db.meds.length||db.sales.length||db.customers.length||db.payments.length))cloudReady=true;
    $('loading').style.display='none';setSync('Offline · saved data available','warn');return;
   }
   $('loading').style.display='none';setSync('⚠ Sync error','warn');message('Cloud error: '+(err.code||err.message));
