@@ -37,6 +37,21 @@ jobs:
           done
           test -s www/index.html
           echo "Android will use bundled clinic files instead of GitHub Pages."
+          # Bundle Firebase compat SDKs too, so the app shell can start without CDN access.
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js -o www/firebase-app-compat.js
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js -o www/firebase-auth-compat.js
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js -o www/firebase-firestore-compat.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('www/index.html')
+          s=p.read_text(encoding='utf-8')
+          for name in ('firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js'):
+              s=s.replace('https://www.gstatic.com/firebasejs/10.12.2/'+name, './'+name)
+          p.write_text(s,encoding='utf-8')
+          PY
+          test -s www/firebase-app-compat.js
+          test -s www/firebase-auth-compat.js
+          test -s www/firebase-firestore-compat.js
 
       - name: Create Android project
         run: npx cap add android
@@ -272,6 +287,7 @@ jobs:
                 "sw.js",
                 "manifest.json",
                 "zeemal-health-clinic-logo.*",
+                "firebase-*-compat.js",
                 "package.json"
               ],
               "win": {
@@ -292,6 +308,18 @@ jobs:
           }
           EOF
           node -e "JSON.parse(require('fs').readFileSync('winapp/package.json','utf8'));console.log('winapp/package.json is valid')"
+          # Keep Firebase SDK files inside the Windows app for offline startup.
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js -o winapp/firebase-app-compat.js
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js -o winapp/firebase-auth-compat.js
+          curl -fsSL https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js -o winapp/firebase-firestore-compat.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('winapp/index.html')
+          s=p.read_text(encoding='utf-8')
+          for name in ('firebase-app-compat.js','firebase-auth-compat.js','firebase-firestore-compat.js'):
+              s=s.replace('https://www.gstatic.com/firebasejs/10.12.2/'+name, './'+name)
+          p.write_text(s,encoding='utf-8')
+          PY
           ls -R winapp
 
       - name: Install Windows build tools
