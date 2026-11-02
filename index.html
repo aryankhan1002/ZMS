@@ -1225,7 +1225,7 @@ document.addEventListener('keydown',e=>{
 });
 
 /* ============================ start ============================ */
-if(CLOUD){setSync('Login required','warn');showLogin('Loading…');initCloud()}
+if(CLOUD){setSync('Checking saved session…');$('loading').style.display='flex';initCloud()}
 else setSync('Device-only mode · Firebase setup required','warn');
 render();
 </script>
