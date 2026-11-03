@@ -1193,16 +1193,30 @@ async function startZXing(token){
    ZX.BarcodeFormat.ITF,ZX.BarcodeFormat.QR_CODE
   ]);
  }catch(e){}
- zxingReader=new ZX.BrowserMultiFormatReader(hints,180);
- $('cameraStatus').textContent='Focus on the barcode and hold the phone steady';
- try{
-  zxingControls=await zxingReader.decodeFromVideoElement($('video'),(result,err)=>{
-   if(token!==camToken||!stream)return;
-   if(result){acceptScannedCode(result.getText());return}
-  });
- }catch(e){
-  if(token===camToken)$('cameraStatus').textContent='Scanner could not start. Keep the barcode centered and try again.';
- }
+ zxingReader=new ZX.BrowserMultiFormatReader(hints,250);
+ $('cameraStatus').textContent='Hold barcode in the center; scanning…';
+ // iPhone Safari can struggle decoding a barcode from the full video frame.
+ // Upscale video frames to a canvas and retry decoding at short intervals.
+ const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
+ let busy=false,lastTry=0;
+ const decodeFrame=()=>{
+  if(token!==camToken||!stream||!zxingReader)return;
+  const video=$('video'),now=Date.now();
+  if(!busy&&video.readyState>=2&&video.videoWidth>0&&now-lastTry>=260){
+   busy=true;lastTry=now;
+   try{
+    const w=video.videoWidth,h=video.videoHeight;
+    // Upscale the whole image to make small medicine-pack barcodes easier to decode.
+    canvas.width=Math.min(2400,w*2);canvas.height=Math.min(1800,h*2);
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    const result=zxingReader.decodeFromCanvas(canvas);
+    if(result){acceptScannedCode(result.getText());return}
+   }catch(e){/* Barcode not found in this frame; continue scanning. */}
+   finally{busy=false}
+  }
+  if(token===camToken&&stream)setTimeout(decodeFrame,100);
+ };
+ decodeFrame();
 }
 async function scan(target){
  stopStream();scanTarget=target;const token=++camToken;
