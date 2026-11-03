@@ -1193,28 +1193,31 @@ async function startZXing(token){
    ZX.BarcodeFormat.ITF,ZX.BarcodeFormat.QR_CODE
   ]);
  }catch(e){}
- zxingReader=new ZX.BrowserMultiFormatReader(hints,250);
- $('cameraStatus').textContent='Hold barcode in the center; scanning…';
- // iPhone Safari can struggle decoding a barcode from the full video frame.
- // Upscale video frames to a canvas and retry decoding at short intervals.
+ zxingReader=new ZX.BrowserMultiFormatReader(hints,300);
+ $('cameraStatus').textContent='Keep barcode horizontal and centered; scanning…';
  const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
  let busy=false,lastTry=0;
  const decodeFrame=()=>{
   if(token!==camToken||!stream||!zxingReader)return;
   const video=$('video'),now=Date.now();
-  if(!busy&&video.readyState>=2&&video.videoWidth>0&&now-lastTry>=260){
+  if(!busy&&video.readyState>=2&&video.videoWidth>0&&now-lastTry>=350){
    busy=true;lastTry=now;
    try{
     const w=video.videoWidth,h=video.videoHeight;
-    // Upscale the whole image to make small medicine-pack barcodes easier to decode.
-    canvas.width=Math.min(2400,w*2);canvas.height=Math.min(1800,h*2);
+    // Preserve aspect ratio while enlarging; distortion can prevent EAN decoding.
+    const scale=Math.min(2,2400/w,1800/h);
+    canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
     ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    const result=zxingReader.decodeFromCanvas(canvas);
-    if(result){acceptScannedCode(result.getText());return}
-   }catch(e){/* Barcode not found in this frame; continue scanning. */}
-   finally{busy=false}
+    try{const result=zxingReader.decodeFromCanvas(canvas);if(result){acceptScannedCode(result.getText());return}}catch(e){}
+    // Retry a centered crop, enlarged with the original barcode proportions.
+    const sx=Math.round(w*.08),sy=Math.round(h*.12),sw=Math.round(w*.84),sh=Math.round(h*.76);
+    const cropScale=Math.min(3,2400/sw,1800/sh);
+    canvas.width=Math.max(1,Math.round(sw*cropScale));canvas.height=Math.max(1,Math.round(sh*cropScale));
+    ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
+    try{const result=zxingReader.decodeFromCanvas(canvas);if(result){acceptScannedCode(result.getText());return}}catch(e){}
+   }finally{busy=false}
   }
-  if(token===camToken&&stream)setTimeout(decodeFrame,100);
+  if(token===camToken&&stream)setTimeout(decodeFrame,120);
  };
  decodeFrame();
 }
