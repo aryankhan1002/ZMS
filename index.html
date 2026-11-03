@@ -1160,7 +1160,7 @@ $('lemail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault(
 
 /* ============================ CAMERA / BARCODE ============================ */
 function stopStream(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null}
-let zxingLoadPromise=null,zxingReader=null;
+let zxingLoadPromise=null,zxingReader=null,zxingControls=null;
 function loadZXing(){
  if(window.ZXing)return Promise.resolve(window.ZXing);
  if(zxingLoadPromise)return zxingLoadPromise;
@@ -1178,18 +1178,47 @@ function acceptScannedCode(code){
  if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
  else{$('mbarcode').value=code;message('Barcode entered successfully.')}
 }
+function isAppleMobileBrowser(){
+ return /iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+}
+async function startZXing(token){
+ const ZX=await loadZXing();
+ if(token!==camToken||!stream)return;
+ const hints=new Map();
+ try{
+  hints.set(ZX.DecodeHintType.TRY_HARDER,true);
+  hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS,[
+   ZX.BarcodeFormat.EAN_13,ZX.BarcodeFormat.EAN_8,ZX.BarcodeFormat.UPC_A,
+   ZX.BarcodeFormat.UPC_E,ZX.BarcodeFormat.CODE_128,ZX.BarcodeFormat.CODE_39,
+   ZX.BarcodeFormat.ITF,ZX.BarcodeFormat.QR_CODE
+  ]);
+ }catch(e){}
+ zxingReader=new ZX.BrowserMultiFormatReader(hints,180);
+ $('cameraStatus').textContent='Focus on the barcode and hold the phone steady';
+ try{
+  zxingControls=await zxingReader.decodeFromVideoElement($('video'),(result,err)=>{
+   if(token!==camToken||!stream)return;
+   if(result){acceptScannedCode(result.getText());return}
+  });
+ }catch(e){
+  if(token===camToken)$('cameraStatus').textContent='Scanner could not start. Keep the barcode centered and try again.';
+ }
+}
 async function scan(target){
  stopStream();scanTarget=target;const token=++camToken;
  $('cameraBox').style.display='block';$('cameraStatus').textContent='Waiting for camera permission…';
  try{
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Open the website over HTTPS (or localhost) to use the camera.');
-  const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+  const s=await navigator.mediaDevices.getUserMedia({video:{
+   facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}
+  },audio:false});
   if(token!==camToken){s.getTracks().forEach(t=>t.stop());return}
-  stream=s;$('video').srcObject=stream;await $('video').play();
-  $('cameraStatus').textContent='Place the barcode in front of the camera';
+  stream=s;$('video').srcObject=stream;$('video').setAttribute('playsinline','');$('video').muted=true;await $('video').play();
+  // ZXing continuous scanning is more reliable on iPhone Safari than its native detector.
+  if(isAppleMobileBrowser()){await startZXing(token);return}
   if('BarcodeDetector' in window){
    let scanner;
-   try{scanner=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']})}
+   try{scanner=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']})}
    catch(e){scanner=new BarcodeDetector()}
    const detect=async()=>{
     if(token!==camToken||!stream)return;
@@ -1198,33 +1227,22 @@ async function scan(target){
      if(token!==camToken)return;
      if(codes.length){acceptScannedCode(codes[0].rawValue);return}
     }catch(e){}
-    if(token===camToken&&stream)setTimeout(detect,300);
+    if(token===camToken&&stream)setTimeout(detect,180);
    };
    detect();return;
   }
-  // Safari on iPhone often lacks BarcodeDetector. Use ZXing as a browser fallback.
-  $('cameraStatus').textContent='Preparing iPhone barcode scanner…';
-  const ZX=await loadZXing();
-  if(token!==camToken)return;
-  zxingReader=new ZX.BrowserMultiFormatReader();
-  $('cameraStatus').textContent='Place the barcode in front of the camera';
-  const detectZX=async()=>{
-   if(token!==camToken||!stream||!zxingReader)return;
-   try{
-    const result=await zxingReader.decodeFromVideoElement($('video'));
-    if(token!==camToken)return;
-    if(result){acceptScannedCode(result.getText());return}
-   }catch(e){/* No barcode in frame yet; keep scanning. */}
-   if(token===camToken&&stream)setTimeout(detectZX,250);
-  };
-  detectZX();
+  await startZXing(token);
  }catch(e){
   if(token!==camToken)return;
   $('cameraStatus').textContent=e.name==='NotAllowedError'?'Allow camera permission in Safari settings.':(e.message||'Could not open the camera');
  }
 }
-function closeCamera(){camToken++;if(zxingReader){try{zxingReader.reset()}catch(e){}zxingReader=null}stopStream();$('cameraBox').style.display='none'}
-
+function closeCamera(){
+ camToken++;
+ if(zxingControls){try{zxingControls.stop()}catch(e){}zxingControls=null}
+ if(zxingReader){try{zxingReader.reset()}catch(e){}zxingReader=null}
+ stopStream();$('cameraBox').style.display='none'
+}
 /* USB / Bluetooth barcode scanners (keyboard-wedge mode).
    Scanners type the barcode quickly and finish with Enter. If an input is
    already focused, its normal Enter handler remains in control. */
