@@ -1160,6 +1160,24 @@ $('lemail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault(
 
 /* ============================ CAMERA / BARCODE ============================ */
 function stopStream(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null}
+let zxingLoadPromise=null,zxingReader=null;
+function loadZXing(){
+ if(window.ZXing)return Promise.resolve(window.ZXing);
+ if(zxingLoadPromise)return zxingLoadPromise;
+ zxingLoadPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+  script.onload=()=>window.ZXing?resolve(window.ZXing):reject(Error('Barcode library did not load'));
+  script.onerror=()=>reject(Error('Could not load iPhone barcode scanner. Check internet connection.'));
+  document.head.appendChild(script);
+ });
+ return zxingLoadPromise;
+}
+function acceptScannedCode(code){
+ closeCamera();
+ if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
+ else{$('mbarcode').value=code;message('Barcode entered successfully.')}
+}
 async function scan(target){
  stopStream();scanTarget=target;const token=++camToken;
  $('cameraBox').style.display='block';$('cameraStatus').textContent='Waiting for camera permission…';
@@ -1168,29 +1186,44 @@ async function scan(target){
   const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
   if(token!==camToken){s.getTracks().forEach(t=>t.stop());return}
   stream=s;$('video').srcObject=stream;await $('video').play();
-  if(!('BarcodeDetector' in window)){$('cameraStatus').textContent='Camera is open, but this browser does not support automatic barcode scanning. Enter the barcode manually.';return}
-  const scanner=new BarcodeDetector();$('cameraStatus').textContent='Place the barcode in front of the camera';
-  const detect=async()=>{
-   if(token!==camToken||!stream)return;
+  $('cameraStatus').textContent='Place the barcode in front of the camera';
+  if('BarcodeDetector' in window){
+   let scanner;
+   try{scanner=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code']})}
+   catch(e){scanner=new BarcodeDetector()}
+   const detect=async()=>{
+    if(token!==camToken||!stream)return;
+    try{
+     const codes=await scanner.detect($('video'));
+     if(token!==camToken)return;
+     if(codes.length){acceptScannedCode(codes[0].rawValue);return}
+    }catch(e){}
+    if(token===camToken&&stream)setTimeout(detect,300);
+   };
+   detect();return;
+  }
+  // Safari on iPhone often lacks BarcodeDetector. Use ZXing as a browser fallback.
+  $('cameraStatus').textContent='Preparing iPhone barcode scanner…';
+  const ZX=await loadZXing();
+  if(token!==camToken)return;
+  zxingReader=new ZX.BrowserMultiFormatReader();
+  $('cameraStatus').textContent='Place the barcode in front of the camera';
+  const detectZX=async()=>{
+   if(token!==camToken||!stream||!zxingReader)return;
    try{
-    const codes=await scanner.detect($('video'));
+    const result=await zxingReader.decodeFromVideoElement($('video'));
     if(token!==camToken)return;
-    if(codes.length){
-     const code=codes[0].rawValue;closeCamera();
-     if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
-     else{$('mbarcode').value=code;message('Barcode entered successfully.')}
-     return;
-    }
-   }catch(e){}
-   if(token===camToken&&stream)setTimeout(detect,300);
+    if(result){acceptScannedCode(result.getText());return}
+   }catch(e){/* No barcode in frame yet; keep scanning. */}
+   if(token===camToken&&stream)setTimeout(detectZX,250);
   };
-  detect();
+  detectZX();
  }catch(e){
   if(token!==camToken)return;
-  $('cameraStatus').textContent=e.name==='NotAllowedError'?'Allow camera permission in your browser or phone settings.':(e.message||'Could not open the camera');
+  $('cameraStatus').textContent=e.name==='NotAllowedError'?'Allow camera permission in Safari settings.':(e.message||'Could not open the camera');
  }
 }
-function closeCamera(){camToken++;stopStream();$('cameraBox').style.display='none'}
+function closeCamera(){camToken++;if(zxingReader){try{zxingReader.reset()}catch(e){}zxingReader=null}stopStream();$('cameraBox').style.display='none'}
 
 /* USB / Bluetooth barcode scanners (keyboard-wedge mode).
    Scanners type the barcode quickly and finish with Enter. If an input is
