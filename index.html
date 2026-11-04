@@ -1159,227 +1159,178 @@ $('lpass').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault()
 $('lemail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('lpass').focus()}});
 
 /* ============================ CAMERA / BARCODE ============================ */
-function stopStream(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}$('video').srcObject=null}
-let zxingLoadPromise=null,zxingReader=null,zxingControls=null;
-function loadZXing(){
- if(window.ZXing)return Promise.resolve(window.ZXing);
- if(zxingLoadPromise)return zxingLoadPromise;
- zxingLoadPromise=new Promise((resolve,reject)=>{
-  const script=document.createElement('script');
-  script.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
-  script.onload=()=>window.ZXing?resolve(window.ZXing):reject(Error('Barcode library did not load'));
-  script.onerror=()=>reject(Error('Could not load iPhone barcode scanner. Check internet connection.'));
-  document.head.appendChild(script);
- });
- return zxingLoadPromise;
+/* Unified scanner: native BarcodeDetector where reliable, ZXing fallback everywhere. */
+let scanStop=null,zxingLoadPromise=null,zxingReader=null;
+
+function stopStream(){
+ if(stream){try{stream.getTracks().forEach(t=>t.stop())}catch(e){}stream=null}
+ try{const v=$('video');v.pause();v.srcObject=null}catch(e){}
 }
-function acceptScannedCode(code){
- closeCamera();
- if(scanTarget==='bill'){$('bsearch').value=code;addBill()}
- else{$('mbarcode').value=code;message('Barcode entered successfully.')}
+function closeCamera(){
+ camToken++;
+ if(scanStop){try{scanStop()}catch(e){}scanStop=null}
+ if(zxingReader){try{zxingReader.reset()}catch(e){}zxingReader=null}
+ stopStream();
+ $('cameraBox').style.display='none';
 }
 function isAppleMobileBrowser(){
  return /iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 }
-async function startZXing(token){
- const ZX=await loadZXing();
- if(token!==camToken||!stream)return;
- const hints=new Map();
- try{
-  hints.set(ZX.DecodeHintType.TRY_HARDER,true);
-  hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS,[
-   ZX.BarcodeFormat.EAN_13,ZX.BarcodeFormat.EAN_8,ZX.BarcodeFormat.UPC_A,
-   ZX.BarcodeFormat.UPC_E,ZX.BarcodeFormat.CODE_128,ZX.BarcodeFormat.CODE_39,
-   ZX.BarcodeFormat.ITF,ZX.BarcodeFormat.QR_CODE
-  ]);
- }catch(e){}
- zxingReader=new ZX.BrowserMultiFormatReader(hints,300);
- $('cameraStatus').textContent='Keep barcode horizontal and centered; scanning…';
- const canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});
- let busy=false,lastTry=0;
- const decodeFrame=()=>{
-  if(token!==camToken||!stream||!zxingReader)return;
-  const video=$('video'),now=Date.now();
-  if(!busy&&video.readyState>=2&&video.videoWidth>0&&now-lastTry>=350){
-   busy=true;lastTry=now;
-   try{
-    const w=video.videoWidth,h=video.videoHeight;
-    // Preserve aspect ratio while enlarging; distortion can prevent EAN decoding.
-    const scale=Math.min(2,2400/w,1800/h);
-    canvas.width=Math.max(1,Math.round(w*scale));canvas.height=Math.max(1,Math.round(h*scale));
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    try{const result=zxingReader.decodeFromCanvas(canvas);if(result){acceptScannedCode(result.getText());return}}catch(e){}
-    // Retry a centered crop, enlarged with the original barcode proportions.
-    const sx=Math.round(w*.08),sy=Math.round(h*.12),sw=Math.round(w*.84),sh=Math.round(h*.76);
-    const cropScale=Math.min(3,2400/sw,1800/sh);
-    canvas.width=Math.max(1,Math.round(sw*cropScale));canvas.height=Math.max(1,Math.round(sh*cropScale));
-    ctx.drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
-    try{const result=zxingReader.decodeFromCanvas(canvas);if(result){acceptScannedCode(result.getText());return}}catch(e){}
-   }finally{busy=false}
-  }
-  if(token===camToken&&stream)setTimeout(decodeFrame,120);
- };
- decodeFrame();
-}
-async function scanLegacy(target){
- stopStream();scanTarget=target;const token=++camToken;
- $('cameraBox').style.display='block';$('cameraStatus').textContent='Waiting for camera permission…';
- try{
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw Error('Open the website over HTTPS (or localhost) to use the camera.');
-  const s=await navigator.mediaDevices.getUserMedia({video:{
-   facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}
-  },audio:false});
-  if(token!==camToken){s.getTracks().forEach(t=>t.stop());return}
-  stream=s;$('video').srcObject=stream;$('video').setAttribute('playsinline','');$('video').muted=true;await $('video').play();
-  // ZXing continuous scanning is more reliable on iPhone Safari than its native detector.
-  if(isAppleMobileBrowser()){await startZXing(token);return}
-  if('BarcodeDetector' in window){
-   let scanner;
-   try{scanner=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']})}
-   catch(e){scanner=new BarcodeDetector()}
-   const detect=async()=>{
-    if(token!==camToken||!stream)return;
-    try{
-     const codes=await scanner.detect($('video'));
-     if(token!==camToken)return;
-     if(codes.length){acceptScannedCode(codes[0].rawValue);return}
-    }catch(e){}
-    if(token===camToken&&stream)setTimeout(detect,180);
-   };
-   detect();return;
-  }
-  await startZXing(token);
- }catch(e){
-  if(token!==camToken)return;
-  $('cameraStatus').textContent=e.name==='NotAllowedError'?'Allow camera permission in Safari settings.':(e.message||'Could not open the camera');
- }
-}
-function closeCameraLegacy(){
- camToken++;
- if(zxingControls){try{zxingControls.stop()}catch(e){}zxingControls=null}
- if(zxingReader){try{zxingReader.reset()}catch(e){}zxingReader=null}
- stopStream();$('cameraBox').style.display='none'
-}
-/* iPhone Safari barcode fallback: ZXing-C++ WebAssembly BarcodeDetector ponyfill */
-const FB_LIBS=[
- 'https://cdn.jsdelivr.net/npm/barcode-detector@3.2.3/dist/es/ponyfill.min.js',
- 'https://fastly.jsdelivr.net/npm/barcode-detector@3.2.3/dist/es/ponyfill.min.js'
-];
-let fbDetectorPromise=null,fbActive=false,fbTimer=null;
-function fbLoadDetector(){
- if(!fbDetectorPromise){
-  fbDetectorPromise=(async()=>{
-   let lastErr;
-   for(const url of FB_LIBS){
-    try{
-     const mod=await import(url);
-     if(typeof mod.BarcodeDetector!=='function')throw Error('BarcodeDetector export missing');
-     return new mod.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf']});
-    }catch(e){lastErr=e}
-   }
-   fbDetectorPromise=null;
-   throw lastErr||Error('Unable to load barcode decoder');
-  })();
- }
- return fbDetectorPromise;
-}
-function fbChecksumOk(code,format){
- if(!/^\d+$/.test(code))return false;
- if(format!=='ean_13'&&format!=='ean_8'&&format!=='upc_a')return true;
- const digits=code.split('').map(Number),check=digits.pop();
- let sum=0,weight=3;
- for(let i=digits.length-1;i>=0;i--){sum+=digits[i]*weight;weight=weight===3?1:3}
- return (10-sum%10)%10===check;
-}
-function fbStop(){
- fbActive=false;camToken++;clearTimeout(fbTimer);fbTimer=null;
- try{const v=$('video');v.pause();v.srcObject=null}catch(e){}
- if(stream){try{stream.getTracks().forEach(t=>t.stop())}catch(e){}stream=null}
- $('cameraBox').style.display='none';
-}
-function fbDone(code){
+function acceptScannedCode(code){
  const target=scanTarget;
  closeCamera();
  try{if(navigator.vibrate)navigator.vibrate(50)}catch(e){}
- if(target==='medicine'){
-  $('mbarcode').value=code;
-  message('Barcode entered successfully.');
- }else{
-  $('bsearch').value=code;
-  addBill();
+ if(target==='bill'){$('bsearch').value=code;addBill()}
+ else{$('mbarcode').value=code;message('Barcode entered successfully.')}
+}
+
+/* ZXing loader: retry two CDN endpoints; reset failed promise so retry is possible. */
+const ZX_URLS=[
+ 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js',
+ 'https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js'
+];
+function loadZXingScript(url){
+ return new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src=url;script.async=true;
+  script.onload=()=>window.ZXing?resolve(window.ZXing):(script.remove(),reject(Error('ZXing did not expose its browser library')));
+  script.onerror=()=>{script.remove();reject(Error('Could not load scanner library from '+url))};
+  document.head.appendChild(script);
+ });
+}
+function loadZXing(){
+ if(window.ZXing)return Promise.resolve(window.ZXing);
+ if(!zxingLoadPromise){
+  zxingLoadPromise=(async()=>{
+   let lastError;
+   for(const url of ZX_URLS){try{return await loadZXingScript(url)}catch(e){lastError=e}}
+   zxingLoadPromise=null;
+   throw Error('Scanner library could not load. Check internet and reopen scanner. '+(lastError&&lastError.message||''));
+  })();
+ }
+ return zxingLoadPromise;
+}
+
+/* ZXing continuous decoder; supports all requested formats including QR. */
+async function startZXing(token){
+ const status=$('cameraStatus');
+ status.textContent='Loading scanner library…';
+ const ZX=await loadZXing();
+ if(token!==camToken||!stream)return;
+ const hints=new Map();
+ hints.set(ZX.DecodeHintType.TRY_HARDER,true);
+ hints.set(ZX.DecodeHintType.POSSIBLE_FORMATS,[
+  ZX.BarcodeFormat.EAN_13,ZX.BarcodeFormat.EAN_8,ZX.BarcodeFormat.UPC_A,
+  ZX.BarcodeFormat.UPC_E,ZX.BarcodeFormat.CODE_128,ZX.BarcodeFormat.CODE_39,
+  ZX.BarcodeFormat.ITF,ZX.BarcodeFormat.QR_CODE
+ ]);
+ const reader=new ZX.BrowserMultiFormatReader(hints,250);
+ zxingReader=reader;
+ const video=$('video');
+ status.textContent='Point the camera at a barcode or QR code…';
+ let stopped=false;
+ scanStop=()=>{stopped=true;try{reader.reset()}catch(e){}};
+ try{
+  reader.decodeFromVideoElementContinuously(video,(result,error)=>{
+   if(stopped||token!==camToken||!stream)return;
+   if(result){
+    const code=result.getText();
+    if(code){acceptScannedCode(code);return}
+   }
+   if(error){
+    const name=String(error.name||'');
+    // These are normal "no code in this frame" decoding outcomes.
+    if(!['NotFoundException','ChecksumException','FormatException'].includes(name)){
+     status.textContent='Scanner issue: '+(error.message||name||'decoder error')+'. Keep camera steady or close and retry.';
+    }
+   }
+  });
+ }catch(e){
+  if(token===camToken)status.textContent='Scanner error: '+(e&&e.message||e);
  }
 }
-async function scanFallback(target){
- scanTarget=target;fbActive=true;
+
+/* Native BarcodeDetector is used only when available and supported. */
+function startNativeScanner(token){
+ let detector;
+ try{
+  detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf','qr_code']});
+ }catch(e){return false}
+ const video=$('video');
+ let stopped=false,timer=null,failures=0,busy=false;
+ scanStop=()=>{stopped=true;clearTimeout(timer)};
+ $('cameraStatus').textContent='Point the camera at a barcode or QR code…';
+ const loop=async()=>{
+  if(stopped||token!==camToken||!stream)return;
+  if(!busy){
+   busy=true;
+   try{
+    const codes=await detector.detect(video);
+    if(stopped||token!==camToken)return;
+    failures=0;
+    if(codes&&codes.length&&codes[0].rawValue){acceptScannedCode(String(codes[0].rawValue));return}
+   }catch(e){
+    failures++;
+    if(failures>=8){
+     stopped=true;clearTimeout(timer);scanStop=null;
+     startZXing(token).catch(err=>{if(token===camToken)$('cameraStatus').textContent=err&&err.message||'Scanner failed'});
+     return;
+    }
+   }finally{busy=false}
+  }
+  if(!stopped&&token===camToken&&stream)timer=setTimeout(loop,160);
+ };
+ loop();
+ return true;
+}
+
+async function getCameraStream(){
+ const constraints=[
+  {audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}},
+  {audio:false,video:{facingMode:{ideal:'environment'}}},
+  {audio:false,video:true}
+ ];
+ let lastError;
+ for(const c of constraints){
+  try{return await navigator.mediaDevices.getUserMedia(c)}
+  catch(e){lastError=e;if(e&&(e.name==='NotAllowedError'||e.name==='SecurityError'))throw e}
+ }
+ throw lastError||Error('Could not access camera');
+}
+
+async function scan(target){
+ closeCamera();
+ scanTarget=target;
  const token=++camToken;
  const video=$('video'),status=$('cameraStatus');
  $('cameraBox').style.display='block';
- status.textContent='Starting camera…';
- if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-  status.textContent='Camera is unavailable. Enter barcode manually.';
-  return;
- }
- const detectorPromise=fbLoadDetector();
- detectorPromise.catch(()=>{});
+ status.textContent='Waiting for camera permission…';
  try{
-  const s=await navigator.mediaDevices.getUserMedia({audio:false,video:{
-   facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}
-  }});
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)
+   throw Error('Camera is unavailable. Open the HTTPS website or allow camera access in app settings.');
+  const s=await getCameraStream();
   if(token!==camToken){s.getTracks().forEach(t=>t.stop());return}
   stream=s;
   video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
   video.muted=true;video.autoplay=true;video.srcObject=s;
   await video.play();
-  for(let i=0;i<30&&!video.videoWidth&&token===camToken;i++)await new Promise(r=>setTimeout(r,100));
+  for(let i=0;i<40&&!video.videoWidth&&token===camToken;i++)await new Promise(r=>setTimeout(r,100));
   if(token!==camToken)return;
+  if(!video.videoWidth)throw Error('Camera started but video frames are not available. Close other camera apps and retry.');
+  // iPhone Safari / iPad / iOS webview: use ZXing directly, not the WASM ponyfill.
+  if(!isAppleMobileBrowser()&&'BarcodeDetector' in window&&startNativeScanner(token))return;
+  await startZXing(token);
  }catch(e){
   if(token!==camToken)return;
-  status.textContent=e&&e.name==='NotAllowedError'?'Camera permission denied. Allow camera access or enter barcode manually.':'Could not open camera. Enter barcode manually.';
-  return;
+  const name=e&&e.name;
+  status.textContent=name==='NotAllowedError'?'Camera permission denied. Allow camera access in Settings.':
+   name==='NotFoundError'?'No camera was found.':
+   name==='NotReadableError'?'Camera is being used by another app. Close it and retry.':
+   (e&&e.message)||'Could not start camera.';
  }
- status.textContent='Loading barcode decoder…';
- let detector;
- try{detector=await detectorPromise}catch(e){
-  if(token===camToken)status.textContent='Scanner library could not load. Check internet, then reopen scanner.';
-  return;
- }
- if(token!==camToken)return;
- status.textContent='Point the camera at the barcode…';
- const canvas=document.createElement('canvas');
- const ctx=canvas.getContext('2d',{willReadFrequently:true});
- let frame=0,lastCode='',sameHits=0,busy=false;
- const tick=async()=>{
-  if(token!==camToken||!fbActive||!stream)return;
-  try{
-   const vw=video.videoWidth,vh=video.videoHeight;
-   if(vw&&vh&&video.readyState>=2&&!busy){
-    busy=true;
-    const full=(frame++%2===0);
-    const sx=full?0:Math.round(vw*.08),sy=full?0:Math.round(vh*.12);
-    const sw=full?vw:Math.round(vw*.84),sh=full?vh:Math.round(vh*.76);
-    canvas.width=sw;canvas.height=sh;
-    ctx.drawImage(video,sx,sy,sw,sh,0,0,sw,sh);
-    // Canvas is supported; ImageData is not consistently accepted by this API.
-    const results=await detector.detect(canvas);
-    if(token!==camToken)return;
-    for(const result of results||[]){
-     const code=String(result.rawValue||'').trim(),format=String(result.format||'');
-     if(!code)continue;
-     const gtin=['ean_13','ean_8','upc_a','upc_e'].includes(format);
-     if(gtin&&!fbChecksumOk(code,format))continue;
-     sameHits=code===lastCode?sameHits+1:1;lastCode=code;
-     if(gtin||sameHits>=2){fbDone(code);return}
-    }
-   }
-  }catch(e){/* no barcode in this frame; keep scanning */}
-  finally{busy=false}
-  if(token===camToken&&fbActive&&stream)fbTimer=setTimeout(tick,140);
- };
- tick();
 }
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&fbActive)fbStop()});
-function scan(target){return isAppleMobileBrowser()?scanFallback(target):scanLegacy(target)}
-function closeCamera(){if(fbActive)fbStop();else closeCameraLegacy()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)closeCamera()});
+window.addEventListener('pagehide',closeCamera);
 
 /* USB / Bluetooth barcode scanners (keyboard-wedge mode).
    Scanners type the barcode quickly and finish with Enter. If an input is
