@@ -392,11 +392,17 @@ const FIREBASE_CONFIG={
 
 <div class="sheet" id="sBackup"><div class="sheet-card">
  <div class="sheet-head"><b>Backup / Restore</b><button class="x" type="button" onclick="closeSheet('sBackup')">✕</button></div>
- <div class="s" style="margin:4px 0 8px">Save the backup as a file or copy the text and keep it somewhere safe. Restoring will replace the current data.</div>
- <textarea id="bkText" rows="6" style="font-size:12px"></textarea>
- <div class="row" style="margin-top:10px"><button class="btn soft" type="button" onclick="bkDownload()">File Download</button><button class="btn soft" type="button" onclick="bkCopy()">Text Copy</button></div>
- <label class="lbl">Load from Backup File</label><input id="bkFile" type="file" accept=".json,application/json,text/plain" onchange="bkFile(this)">
- <button class="btn red block" type="button" style="margin-top:12px" onclick="bkRestore()">Restore from Text Above</button>
+ <div class="s" style="margin:4px 0 8px">Download a complete backup file, then select that JSON file in the new app to import it. Restore replaces the current selected store's data.</div>
+ <div class="row" style="margin:8px 0">
+  <button class="btn block" type="button" onclick="bkDownload()">⬇ Download Backup File (.json)</button>
+ </div>
+ <div class="s" id="bkStatus" role="status" style="margin:6px 0"></div>
+ <label class="lbl">Backup File (JSON)</label>
+ <input id="bkFile" type="file" accept=".json,application/json,text/plain" onchange="bkFile(this)">
+ <button class="btn green block" type="button" style="margin-top:10px" onclick="bkRestoreFile()">Import Selected Backup File</button>
+ <div class="s" style="margin:10px 0 5px">Optional: paste backup text here instead.</div>
+ <textarea id="bkText" rows="5" style="font-size:12px"></textarea>
+ <div class="row" style="margin-top:8px"><button class="btn soft" type="button" onclick="bkCopy()">Copy Backup Text</button><button class="btn red" type="button" onclick="bkRestore()">Restore Text</button></div>
 </div></div>
 
 <div id="cameraBox">
@@ -972,14 +978,50 @@ function saveSettings(){
   lowQty:$('setLow').value===''?null:Math.max(0,num($('setLow').value)),expDays:$('setExp').value===''?null:Math.max(0,num($('setExp').value))};
  closeSheet('sSettings');save();message('Settings saved successfully');
 }
+function makeBackupText(){
+ return JSON.stringify({
+  app:'zeemal-health-clinic',
+  format:'zeemal-clinic-backup',
+  version:3,
+  exportedAt:new Date().toISOString(),
+  storeId:typeof activeStoreId==='string'?activeStoreId:'device',
+  storeName:String((db.settings&&db.settings.storeName)||'Zeemal Health Clinic'),
+  data:{meds:db.meds,customers:db.customers,sales:db.sales,payments:db.payments,settings:db.settings}
+ },null,2);
+}
 function openBackup(){
- $('bkText').value=JSON.stringify({app:'zms',version:2,exported:new Date().toISOString(),data:{meds:db.meds,customers:db.customers,sales:db.sales,payments:db.payments,settings:db.settings}});
+ $('bkText').value=makeBackupText();
+ $('bkStatus').textContent='Backup ready: '+db.meds.length+' medicines, '+db.sales.length+' bills, '+db.customers.length+' customers and '+db.payments.length+' payments.';
  openSheet('sBackup');
 }
-function bkDownload(){
- const blob=new Blob([$('bkText').value],{type:'application/json'}),a=document.createElement('a');
- a.href=URL.createObjectURL(blob);a.download='zms-backup-'+ymd(new Date())+'.json';document.body.appendChild(a);a.click();a.remove();
- setTimeout(()=>URL.revokeObjectURL(a.href),4000);message('Download started. If it does not work, use "Copy Text"');
+async function bkDownload(){
+ const text=$('bkText').value||makeBackupText();
+ if(!text||text.length<20)return message('Backup is empty. Please wait for data to finish loading.');
+ const filename='zeemal-health-clinic-backup-'+ymd(new Date())+'.json';
+ const blob=new Blob([text],{type:'application/json;charset=utf-8'});
+ const file=new File([blob],filename,{type:'application/json'});
+ // On supported phones, offer the native share/save sheet for the JSON file.
+ try{
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+   await navigator.share({files:[file],title:'Zeemal Health Clinic Backup'});
+   $('bkStatus').textContent='Backup file shared. Save it to your device or cloud storage.';
+   return;
+  }
+ }catch(e){
+  if(e&&e.name==='AbortError')return;
+  console.warn('Native file sharing unavailable; trying browser download',e);
+ }
+ try{
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  $('bkStatus').textContent='Download requested: '+filename+'. Check your Downloads folder.';
+  message('Backup file download requested.');
+ }catch(e){
+  $('bkStatus').textContent='Automatic download was blocked. Use Copy Backup Text or open this app in your browser.';
+  message('File download was blocked by this device.');
+ }
 }
 function bkCopy(){
  const t=$('bkText');t.focus();t.select();
@@ -988,16 +1030,47 @@ function bkCopy(){
 }
 function bkFile(inp){
  const f=inp.files&&inp.files[0];if(!f)return;
- const r=new FileReader();r.onload=()=>{$('bkText').value=r.result;message('File loaded. Select Restore to continue.')};r.readAsText(f);inp.value='';
+ if(f.size>50*1024*1024){message('Backup file is too large (maximum 50 MB).');inp.value='';return}
+ const r=new FileReader();
+ r.onload=()=>{
+  $('bkText').value=String(r.result||'');
+  let o;try{o=JSON.parse($('bkText').value)}catch(e){$('bkStatus').textContent='Invalid JSON file. Please choose a valid clinic backup.';message('Invalid backup JSON.');return}
+  const d=o&&o.data?o.data:o;
+  if(!d||typeof d!=='object'||!Array.isArray(d.meds)||!Array.isArray(d.sales)){
+   $('bkStatus').textContent='This file is not a valid Zeemal Health Clinic backup.';
+   message('This is not a valid clinic backup.');return;
+  }
+  $('bkStatus').textContent='Backup file loaded and validated. Tap “Import Selected Backup File” to restore.';
+  message('Backup file loaded successfully.');
+ };
+ r.onerror=()=>{ $('bkStatus').textContent='Could not read the selected file.';message('File read failed.')};
+ r.readAsText(f);inp.value='';
+}
+function parseBackupText(){
+ let o;try{o=JSON.parse($('bkText').value)}catch(e){return null}
+ const d=o&&o.data?o.data:o;
+ if(!d||typeof d!=='object'||!Array.isArray(d.meds)||!Array.isArray(d.sales))return null;
+ return d;
+}
+function applyBackupData(d){
+ db={meds:d.meds,customers:Array.isArray(d.customers)?d.customers:[],sales:d.sales,
+  payments:Array.isArray(d.payments)?d.payments:[],settings:d.settings&&typeof d.settings==='object'?d.settings:{}};
+ normalize();cart=[];
+ closeSheet('sBackup');save();message('Backup imported successfully.');
+}
+function bkRestoreFile(){
+ if(!canWrite())return;
+ const d=parseBackupText();
+ if(!d)return message('Please select a valid Zeemal Health Clinic backup JSON file first.');
+ if(!confirm('This will REPLACE the current selected store data with the backup file. Make sure you have downloaded a backup of current data. Continue?'))return;
+ applyBackupData(d);
 }
 function bkRestore(){
  if(!canWrite())return;
- let o;try{o=JSON.parse($('bkText').value)}catch(e){return message('Backup text is invalid.')}
- const d=o&&o.data?o.data:o;
- if(!d||typeof d!=='object'||!Array.isArray(d.meds)||!Array.isArray(d.sales))return message('This does not appear to be a valid Zeemal Health Clinic backup.');
- if(!confirm('Current data will be replaced with the backup. Are you sure you want to restore?'))return;
- db={meds:d.meds,customers:d.customers,sales:d.sales,payments:d.payments,settings:d.settings};normalize();cart=[];
- closeSheet('sBackup');save();message('Backup restored successfully.');
+ const d=parseBackupText();
+ if(!d)return message('Backup text is invalid or is not a Zeemal Health Clinic backup.');
+ if(!confirm('This will REPLACE the current selected store data with the backup text. Continue?'))return;
+ applyBackupData(d);
 }
 
 /* ============================ CLOUD (Firebase login + sync) ============================ */
