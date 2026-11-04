@@ -1274,7 +1274,7 @@ function fbLoadDetector(){
     try{
      const mod=await import(url);
      if(typeof mod.BarcodeDetector!=='function')throw Error('BarcodeDetector export missing');
-     return new mod.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf']});
+     return new mod.BarcodeDetector({formats:['qr_code','ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf']});
     }catch(e){lastErr=e}
    }
    fbDetectorPromise=null;
